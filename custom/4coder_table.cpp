@@ -47,15 +47,17 @@ table_free(Table_u64_u64 *table){
 internal Table_Lookup
 table_lookup(Table_u64_u64 *table, u64 key){
     Table_Lookup result = {};
-    
+
     if (key != table_empty_key && key != table_erased_key &&
         table->slot_count > 0){
         u64 *keys = table->keys;
         u32 slot_count = table->slot_count;
-        
-        u32 first_index = key % slot_count;
+
+        u32 hash = (key * 11400714819323198485ULL) >> 32ULL;
+        u32 first_index = hash % slot_count;
         u32 index = first_index;
-        result.hash = key;
+        result.key = key;
+        result.hash = hash;
         for (;;){
             if (key == keys[index]){
                 result.index = index;
@@ -86,7 +88,7 @@ table_lookup(Table_u64_u64 *table, u64 key){
             }
         }
     }
-    
+
     return(result);
 }
 
@@ -109,7 +111,7 @@ table_read(Table_u64_u64 *table, u64 key, u64 *val_out){
 internal void
 table_insert__inner(Table_u64_u64 *table, Table_Lookup lookup, u64 val){
     Assert(lookup.found_empty_slot || lookup.found_erased_slot);
-    table->keys[lookup.index] = lookup.hash;
+    table->keys[lookup.index] = lookup.key;
     table->vals[lookup.index] = val;
     table->used_count += 1;
     if (lookup.found_empty_slot){
@@ -214,15 +216,17 @@ table_free(Table_u32_u16 *table){
 internal Table_Lookup
 table_lookup(Table_u32_u16 *table, u32 key){
     Table_Lookup result = {};
-    
+
     if (key != table_empty_u32_key && key != table_erased_u32_key &&
         table->slot_count > 0){
         u32 *keys = table->keys;
         u32 slot_count = table->slot_count;
-        
-        u32 first_index = key % slot_count;
+
+        u32 hash = (key * 11400714819323198485ULL) >> 32ULL;
+        u32 first_index = hash % slot_count;
         u32 index = first_index;
-        result.hash = key;
+        result.key = key;
+        result.hash = hash;
         for (;;){
             if (key == keys[index]){
                 result.index = index;
@@ -253,7 +257,7 @@ table_lookup(Table_u32_u16 *table, u32 key){
             }
         }
     }
-    
+
     return(result);
 }
 
@@ -378,11 +382,11 @@ table_free(Table_Data_u64 *table){
 internal Table_Lookup
 table_lookup(Table_Data_u64 *table, String_Const_u8 key){
     Table_Lookup result = {};
-    
+
     if (table->slot_count > 0){
         u64 *hashes = table->hashes;
         u32 slot_count = table->slot_count;
-        
+
         u64 hash = table_hash(key);
         u32 first_index = hash % slot_count;
         u32 index = first_index;
@@ -419,7 +423,7 @@ table_lookup(Table_Data_u64 *table, String_Const_u8 key){
             }
         }
     }
-    
+
     return(result);
 }
 
@@ -556,12 +560,12 @@ table_free(Table_u64_Data *table){
 internal Table_Lookup
 table_lookup(Table_u64_Data *table, u64 key){
     Table_Lookup result = {};
-    
+
     if (key != table_empty_key && key != table_erased_key &&
         table->slot_count > 0){
         u64 *keys = table->keys;
         u32 slot_count = table->slot_count;
-        
+
         u32 first_index = key % slot_count;
         u32 index = first_index;
         result.hash = key;
@@ -595,7 +599,7 @@ table_lookup(Table_u64_Data *table, u64 key){
             }
         }
     }
-    
+
     return(result);
 }
 
@@ -726,11 +730,11 @@ table_free(Table_Data_Data *table){
 internal Table_Lookup
 table_lookup(Table_Data_Data *table, String_Const_u8 key){
     Table_Lookup result = {};
-    
+
     if (table->slot_count > 0){
         u64 *hashes = table->hashes;
         u32 slot_count = table->slot_count;
-        
+
         u64 hash = table_hash(key);
         u32 first_index = hash % slot_count;
         u32 index = first_index;
@@ -765,7 +769,7 @@ table_lookup(Table_Data_Data *table, String_Const_u8 key){
             }
         }
     }
-    
+
     return(result);
 }
 

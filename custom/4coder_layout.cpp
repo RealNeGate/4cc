@@ -5,7 +5,7 @@
 // TOP
 
 internal i64
-layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
+layout_nearest_pos_to_xy(f32 line_height, Layout_Item_List list, Vec2_f32 p){
     i64 closest_match = 0;
     if (p.y < 0.f){
         closest_match = list.manifested_index_range.min;
@@ -17,23 +17,24 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
         if (0.f < p.x && p.x < max_f32){
             f32 closest_x = -max_f32;
             for (Layout_Item_Block *block = list.first;
-                 block != 0;
-                 block = block->next){
+                block != 0;
+                block = block->next){
                 i64 count = block->item_count;
                 Layout_Item *item = block->items;
+
                 for (i32 i = 0; i < count; i += 1, item += 1){
                     if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                         continue;
                     }
                     // NOTE(allen): This only works if we build layouts in y-sorted order.
-                    if (p.y < item->rect.y0){
+                    if (p.y < item->p.y){
                         goto double_break;
                     }
-                    if (item->padded_y1 <= p.y){
+                    if (line_height <= p.y){
                         continue;
                     }
-                    f32 dist0 = p.x - item->rect.x0;
-                    f32 dist1 = item->rect.x1 - p.x;
+                    f32 dist0 = p.x - item->p.x;
+                    f32 dist1 = item->x1 - p.x;
                     if (dist0 >= 0.f && dist1 > 0.f){
                         closest_match = item->index;
                         goto double_break;
@@ -51,28 +52,29 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
             double_break:;
         }
         else{
-            
+
             if (p.x == max_f32){
                 Layout_Item *prev_item = 0;
                 for (Layout_Item_Block *block = list.first;
-                     block != 0;
-                     block = block->next){
+                    block != 0;
+                    block = block->next){
                     i64 count = block->item_count;
                     Layout_Item *item = block->items;
+
                     for (i32 i = 0; i < count; i += 1, item += 1){
                         if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                             continue;
                         }
-                        if (p.y < item->rect.y0){
+                        if (p.y < item->p.y){
                             goto double_break_2;
                         }
                         prev_item = item;
-                        if (item->padded_y1 <= p.y){
+                        if (line_height <= p.y){
                             continue;
                         }
                     }
                 }
-                
+
                 double_break_2:;
                 if (prev_item != 0){
                     closest_match = prev_item->index;
@@ -84,26 +86,27 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
             else{
                 Layout_Item *closest_item = 0;
                 for (Layout_Item_Block *block = list.first;
-                     block != 0;
-                     block = block->next){
+                    block != 0;
+                    block = block->next){
                     i64 count = block->item_count;
                     Layout_Item *item = block->items;
+
                     for (i32 i = 0; i < count; i += 1, item += 1){
                         if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
                             continue;
                         }
                         // NOTE(allen): This only works if we build layouts in y-sorted order.
-                        if (p.y < item->rect.y0){
+                        if (p.y < item->p.y){
                             goto double_break_3;
                         }
-                        if (item->padded_y1 <= p.y){
+                        if (line_height <= p.y){
                             continue;
                         }
                         closest_item = item;
                         goto double_break_3;
                     }
                 }
-                
+
                 double_break_3:;
                 if (closest_item != 0){
                     closest_match = closest_item->index;
@@ -112,7 +115,6 @@ layout_nearest_pos_to_xy(Layout_Item_List list, Vec2_f32 p){
                     closest_match = list.manifested_index_range.min;
                 }
             }
-            
         }
     }
     return(closest_match);
@@ -123,8 +125,8 @@ layout_get_first_with_index(Layout_Item_List list, i64 index){
     Layout_Item *result = 0;
     Layout_Item *prev = 0;
     for (Layout_Item_Block *block = list.first;
-         block != 0;
-         block = block->next){
+        block != 0;
+        block = block->next){
         i64 count = block->item_count;
         Layout_Item *item = block->items;
         for (i32 i = 0; i < count; i += 1, item += 1){
@@ -150,24 +152,24 @@ layout_get_first_with_index(Layout_Item_List list, i64 index){
 }
 
 internal Rect_f32
-layout_box_of_pos(Layout_Item_List list, i64 index){
+layout_box_of_pos(float line_height, Layout_Item_List list, i64 index){
     Rect_f32 result = {};
     Layout_Item *item = layout_get_first_with_index(list, index);
     if (item != 0){
-        result = item->rect;
+        result = { item->p.x, item->p.y, item->x1, item->p.y + line_height };
     }
     return(result);
 }
 
 function Rect_f32
-layout_padded_box_of_pos(Layout_Item_List list, i64 index){
+layout_padded_box_of_pos(float line_height, Layout_Item_List list, i64 index){
     Rect_f32 result = {};
     Layout_Item *item = layout_get_first_with_index(list, index);
     if (item != 0){
-        result.x0 = item->rect.x0;
-        result.y0 = item->rect.y0;
-        result.x1 = item->rect.x1;
-        result.y1 = item->padded_y1;
+        result.x0 = item->p.x;
+        result.y0 = item->p.y;
+        result.x1 = item->x1;
+        result.y1 = item->p.y + line_height;
     }
     return(result);
 }
@@ -185,17 +187,17 @@ layout_get_pos_at_character(Layout_Item_List list, i64 character){
         i64 counter = 0;
         i64 next_counter = 0;
         for (Layout_Item_Block *node = list.first;
-             node != 0;
-             node = node->next, counter = next_counter){
+            node != 0;
+            node = node->next, counter = next_counter){
             next_counter = counter + node->character_count;
             if (character >= next_counter){
                 continue;
             }
-            
+
             i64 count = node->item_count;
             i64 relative_character = character - counter;
             i64 relative_character_counter = 0;
-            
+
             Layout_Item *item = node->items;
             for (i64 i = 0; i < count; i += 1, item += 1){
                 if (HasFlag(item->flags, LayoutItemFlag_Ghost_Character)){
@@ -207,7 +209,7 @@ layout_get_pos_at_character(Layout_Item_List list, i64 character){
                 }
                 relative_character_counter += 1;
             }
-            
+
             break;
         }
     }
@@ -226,8 +228,8 @@ layout_character_from_pos(Layout_Item_List list, i64 index){
     }
     else{
         for (Layout_Item_Block *node = list.first;
-             node != 0;
-             node = node->next){
+            node != 0;
+            node = node->next){
             Layout_Item *item = node->items;
             i64 count = node->item_count;
             for (i64 i = 0; i < count; i += 1, item += 1){

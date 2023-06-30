@@ -19,7 +19,7 @@ api(custom)
 typedef b32 _Get_Version_Type(i32 maj, i32 min, i32 patch);
 api(custom)
 typedef Custom_Layer_Init_Type *_Init_APIs_Type(struct API_VTable_custom *custom_vtable,
-                                                struct API_VTable_system *system_vtable);
+    struct API_VTable_system *system_vtable);
 
 ////////////////////////////////
 
@@ -446,7 +446,7 @@ enum{
     ManagedObjectType_Error = 0,
     ManagedObjectType_Memory = 1,
     ManagedObjectType_Markers = 2,
-    
+
     ManagedObjectType_COUNT = 4,
 };
 
@@ -488,7 +488,7 @@ api(custom)
 struct Query_Bar_Group{
     Application_Links *app;
     View_ID view;
-    
+
     Query_Bar_Group(Application_Links *app);
     Query_Bar_Group(Application_Links *app, View_ID view);
     ~Query_Bar_Group();
@@ -529,10 +529,10 @@ struct Face_Metrics{
     f32 ascent;
     f32 descent;
     f32 line_skip;
-    
+
     f32 underline_yoff1;
     f32 underline_yoff2;
-    
+
     f32 max_advance;
     f32 space_advance;
     f32 decimal_digit_advance;
@@ -685,7 +685,7 @@ typedef i32 Buffer_Hook_Function(Application_Links *app, Buffer_ID buffer_id);
 
 api(custom)
 typedef i32 Buffer_Edit_Range_Function(Application_Links *app, Buffer_ID buffer_id,
-                                       Range_i64 new_range, Range_Cursor old_range);
+    Range_i64 new_range, Range_Cursor old_range);
 #define BUFFER_EDIT_RANGE_SIG(name) i32 name(Application_Links *app, Buffer_ID buffer_id, Range_i64 new_range, Range_Cursor old_cursor_range)
 
 api(custom)
@@ -710,7 +710,7 @@ typedef void Whole_Screen_Render_Caller_Function(Application_Links *app, Frame_I
 
 api(custom)
 typedef void View_Change_Buffer_Function(Application_Links *app, View_ID view_id,
-                                         Buffer_ID old_buffer_id, Buffer_ID new_buffer_id);
+    Buffer_ID old_buffer_id, Buffer_ID new_buffer_id);
 
 api(custom)
 typedef u32 Layout_Item_Flag;
@@ -719,13 +719,18 @@ enum{
     LayoutItemFlag_Ghost_Character = (1 << 1)
 };
 
+// NOTE(yasser): i'm aiming for a "command" based approach to items
+// because it'll compress far better and that's the most important piece
+// here.
+//
+//
 api(custom)
 struct Layout_Item{
     i64 index;
-    u32 codepoint;
-    Layout_Item_Flag flags;
-    Rect_f32 rect;
-    f32 padded_y1;
+    u32 codepoint : 24;
+    Layout_Item_Flag flags : 8;
+    Vec2_f32 p;
+    f32 x1;
 };
 
 api(custom)
@@ -735,6 +740,7 @@ struct Layout_Item_Block{
     i64 item_count;
     i64 character_count;
     Face_ID face;
+    f32 line_height;
 };
 
 api(custom)
