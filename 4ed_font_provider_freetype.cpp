@@ -175,7 +175,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         face = push_array_zero(arena, Face, 1);
 
         u32 pt_size_unscaled = Max(description->parameters.pt_size, 8);
-        u32 pt_size = (u32)(pt_size_unscaled*scale_factor);
+        u32 pt_size = (u32)f32_ceil32(pt_size_unscaled*scale_factor);
         b32 hinting = description->parameters.hinting;
 
         FT_Size_RequestRec_ size = {};
@@ -300,7 +300,7 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, white.dim), white.dim, &face->white);
         for (u16 i = 0; i < index_count; i += 1){
             Vec2_i32 dim = glyph_bitmaps[i].dim;
-            ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, V2i32(dim.x, dim.y)), dim, &face->bounds[i]);
+            ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, V2i32(dim.x+3, dim.y+3)), dim, &face->bounds[i]);
         }
         ft__bad_rect_store_finish(&pack);
 

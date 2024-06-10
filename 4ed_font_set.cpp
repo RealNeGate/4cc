@@ -144,6 +144,30 @@ font_set_get_largest_id(Font_Set *set){
     return(set->next_id_counter - 1);
 }
 
+internal void
+font_update_scale(Font_Set *set, float new_scale){
+    set->scale_factor = new_scale;
+
+    for (Face_ID id = 1; id < set->next_id_counter; id += 1){
+        Font_Face_Slot *slot = font_set__get_face_slot(set, id);
+        if (slot != 0){
+            i32 version_number = slot->face->version_number;
+            Arena arena = make_arena_system();
+            Face *face = font_make_face(&arena, &slot->face->description, set->scale_factor);
+            if (face != 0){
+                linalloc_clear(&slot->arena);
+                slot->arena = arena;
+                slot->face = face;
+                face->version_number = version_number + 1;
+                face->id = id;
+            }
+            else{
+                linalloc_clear(&arena);
+            }
+        }
+    }
+}
+
 internal b32
 font_set_modify_face(Font_Set *set, Face_ID id, Face_Description *description){
     b32 result = false;
