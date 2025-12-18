@@ -24,7 +24,7 @@ cflags = cflags.." -L /home/linuxbrew/.linuxbrew/lib -L /home/linuxbrew/.linuxbr
 
 if true then -- GCC
 	cflags = cflags.." -D_GNU_SOURCE -fPIC"
-    libs = libs.." -lX11 -lm -lrt -lGL -ldl -lXfixes -lfreetype -fno-threadsafe-statics -pthread -Wno-unused-result -std=c++11"
+    libs = libs.." -lX11 -lXrandr -lm -lrt -lGL -ldl -lXfixes -lfreetype -fno-threadsafe-statics -pthread -Wno-unused-result -std=c++11"
 end
 
 cc("platform_linux/linux_4ed.cpp", "../build/4ed",        cflags.." "..libs)  -- platform layer

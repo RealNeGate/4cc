@@ -12,9 +12,9 @@
 
 #include <stdio.h>
 
-#define FPS 60
-#define frame_useconds (Million(1) / FPS)
-#define frame_nseconds (Billion(1) / FPS)
+// #define FPS 100
+// #define frame_useconds (Million(1) / FPS)
+// #define frame_nseconds (Billion(1) / FPS)
 #define SLASH '/'
 #define DLL "so"
 
@@ -90,6 +90,7 @@
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/Xatom.h>
+#include <X11/extensions/Xrandr.h>
 #include <X11/extensions/Xfixes.h>
 #include <X11/XKBlib.h>
 #include <X11/keysym.h>
@@ -179,6 +180,7 @@ struct Linux_Vars {
     int epoll;
     int step_timer_fd;
     u64 last_step_time;
+    u64 frame_useconds;
 
     XCursor xcursors[APP_MOUSE_CURSOR_COUNT];
     Application_Mouse_Cursor cursor;
@@ -389,12 +391,12 @@ linux_schedule_step(){
     struct itimerspec its = {};
     timerfd_gettime(linuxvars.step_timer_fd, &its);
 
-    if (diff > frame_useconds) {
+    if (diff > linuxvars.frame_useconds) {
         its.it_value.tv_nsec = 1;
         timerfd_settime(linuxvars.step_timer_fd, 0, &its, NULL);
     } else {
         if (its.it_value.tv_sec == 0 && its.it_value.tv_nsec == 0){
-            its.it_value.tv_nsec = (frame_useconds - diff) * 1000UL;
+            its.it_value.tv_nsec = (linuxvars.frame_useconds - diff) * 1000UL;
             timerfd_settime(linuxvars.step_timer_fd, 0, &its, NULL);
         }
     }
@@ -1927,6 +1929,17 @@ main(int argc, char **argv){
         app.init(&linuxvars.tctx, &render_target, base_ptr, curdir, custom);
     }
 
+    // Get the refresh rate of the fastest monitor
+    u64 frame_rate;
+    {
+        Window root = RootWindow(linuxvars.dpy, 0);
+        XRRScreenConfiguration* conf = XRRGetScreenInfo(linuxvars.dpy, root);
+        frame_rate = XRRConfigCurrentRate(conf);
+
+        printf("Rate: %lu\n", frame_rate);
+    }
+    linuxvars.frame_useconds = (1000000 / frame_rate);
+
     linuxvars.global_frame_mutex = system_mutex_make();
     system_mutex_acquire(linuxvars.global_frame_mutex);
 
@@ -1980,7 +1993,7 @@ main(int argc, char **argv){
         linuxvars.received_new_clipboard = false;
 
         input.first_step = first_step;
-        input.dt = frame_useconds/1000000.f; // variable?
+        input.dt = linuxvars.frame_useconds/1000000.f; // variable?
         input.events = linuxvars.input.trans.event_list;
         input.trying_to_kill = linuxvars.input.trans.trying_to_kill;
 

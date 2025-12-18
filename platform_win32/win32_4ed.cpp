@@ -2045,7 +2045,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     ShowWindow(win32vars.window_handle, SW_SHOW);
 
     //- @Added by jack
-    u64 frame_rate = 90;// win32_get_frame_rate();
+    u64 frame_rate = win32_get_frame_rate();
     u64 frame_useconds = (1000000 / frame_rate);
     //-
 
