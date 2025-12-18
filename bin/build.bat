@@ -30,3 +30,7 @@ popd
 %build_root%\build
 :END
 if %ERRORLEVEL% neq 0 (set FirstError=1)
+
+
+cd ../4coder_byp
+build.bat

@@ -376,8 +376,8 @@ App_Step_Sig(app_step){
         char *dest = push_array(scratch, char, max);
 
         for (Node *node = child_processes->child_process_active_list.next;
-             node != &child_processes->child_process_active_list;
-             node = node->next){
+            node != &child_processes->child_process_active_list;
+            node = node->next){
             Child_Process *child_process = CastFromMember(Child_Process, node, node);
 
             Editing_File *file = child_process->out_file;
@@ -486,15 +486,15 @@ App_Step_Sig(app_step){
     Vec2_i32 mouse = input->mouse.p;
     {
         for (Panel *panel = layout_get_first_open_panel(layout);
-             panel != 0;
-             panel = layout_get_next_open_panel(layout, panel)){
+            panel != 0;
+            panel = layout_get_next_open_panel(layout, panel)){
             if (rect_contains_point(panel->rect_full, mouse)){
                 mouse_panel = panel;
                 if (!rect_contains_point(panel->rect_inner, mouse)){
                     mouse_in_margin = true;
                     for (divider_panel = mouse_panel->parent;
-                         divider_panel != 0;
-                         divider_panel = divider_panel->parent){
+                        divider_panel != 0;
+                        divider_panel = divider_panel->parent){
                         if (rect_contains_point(divider_panel->rect_inner, mouse)){
                             break;
                         }
@@ -615,7 +615,7 @@ App_Step_Sig(app_step){
                     consume_rule = EventConsume_BeginResize;
                 }
                 else if (match_mouse_code(event, MouseCode_Left) &&
-                         mouse_panel != 0 && mouse_panel != active_panel){
+                    mouse_panel != 0 && mouse_panel != active_panel){
                     consume_rule = EventConsume_ClickChangeView;
                 }
 
@@ -674,8 +674,8 @@ App_Step_Sig(app_step){
 
         if (event_was_handled && event->kind == InputEventKind_KeyStroke){
             for (Input_Event *dependent_text = event->key.first_dependent_text;
-                 dependent_text != 0;
-                 dependent_text = dependent_text->text.next_text){
+                dependent_text != 0;
+                dependent_text = dependent_text->text.next_text){
                 Assert(dependent_text->kind == InputEventKind_TextInsert);
                 dependent_text->text.blocked = true;
             }
@@ -714,8 +714,8 @@ App_Step_Sig(app_step){
     // NOTE(allen): on the first frame there should be no scrolling
     if (input->first_step){
         for (Panel *panel = layout_get_first_open_panel(layout);
-             panel != 0;
-             panel = layout_get_next_open_panel(layout, panel)){
+            panel != 0;
+            panel = layout_get_next_open_panel(layout, panel)){
             View *view = panel->view;
             File_Edit_Positions edit_pos = view_get_edit_pos(view);
             edit_pos.scroll.position = view_normalize_buffer_point(tctx, models, view, edit_pos.scroll.target);
@@ -730,8 +730,8 @@ App_Step_Sig(app_step){
         Assert(working_set->has_external_mod_sentinel.next != 0);
         if (working_set->has_external_mod_sentinel.next != &working_set->has_external_mod_sentinel){
             for (Node *node = working_set->has_external_mod_sentinel.next, *next = 0;
-                 node != &working_set->has_external_mod_sentinel;
-                 node = next){
+                node != &working_set->has_external_mod_sentinel;
+                node = next){
                 next = node->next;
                 Editing_File *file = CastFromMember(Editing_File, external_mod_node, node);
                 dll_remove(node);
@@ -767,8 +767,8 @@ App_Step_Sig(app_step){
 
         Live_Views *live_views = &models->view_set;
         for (Node *node = layout->open_panels.next;
-             node != &layout->open_panels;
-             node = node->next){
+            node != &layout->open_panels;
+            node = node->next){
             Panel *panel = CastFromMember(Panel, node, node);
             View *view = panel->view;
             View_Context_Node *ctx = view->ctx;
@@ -807,9 +807,9 @@ App_Step_Sig(app_step){
                 Application_Links app = {};
                 app.tctx = tctx;
                 app.cmd_context = models;
-#define M "SERIOUS ERROR: coroutine wind down did not complete\n"
+                #define M "SERIOUS ERROR: coroutine wind down did not complete\n"
                 print_message(&app, string_u8_litexpr(M));
-#undef M
+                #undef M
                 break;
             }
         }

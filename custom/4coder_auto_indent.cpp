@@ -214,7 +214,7 @@ get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Ra
             
             b32 shift_by_actual_indent = false;
             b32 ignore_unfinished_statement = false;
-            if (HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
+            if (0){
                 this_indent = 0;
             }
             else{
@@ -255,12 +255,11 @@ get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Ra
                         sll_stack_push(nest, new_nest);
                         nest->kind = TokenBaseKind_ParentheticalOpen;
                         line_indent_cache_update(app, buffer, tab_width, &line_cache);
-                        nest->indent = (token->pos - line_cache.indent_info.first_char_pos) + 1;
+                        nest->indent = current_indent + indent_width;
                         following_indent = nest->indent;
-                        shift_by_actual_indent = true;
                         ignore_unfinished_statement = true;
                     }break;
-                    
+
                     case TokenBaseKind_ParentheticalClose:
                     {
                         if (nest != 0 && nest->kind == TokenBaseKind_ParentheticalOpen){
@@ -268,10 +267,16 @@ get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Ra
                             sll_stack_pop(nest);
                             indent__free_nest(&nest_alloc, n);
                         }
-                        following_indent = 0;
+                        /*following_indent = 0;
                         if (nest != 0){
                             following_indent = nest->indent;
+                        }*/
+
+                        this_indent = 0;
+                        if (nest != 0){
+                            this_indent = nest->indent;
                         }
+                        following_indent = this_indent;
                         //ignore_unfinished_statement = true;
                     }break;
                 }

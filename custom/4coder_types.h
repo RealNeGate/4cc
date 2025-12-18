@@ -723,7 +723,6 @@ enum{
 // because it'll compress far better and that's the most important piece
 // here.
 //
-//
 api(custom)
 struct Layout_Item{
     i64 index;

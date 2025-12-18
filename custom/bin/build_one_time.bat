@@ -2,7 +2,7 @@
 
 REM usage: <script> <target> [binary-output-path [mode]]
 REM  src-file : a relative path to the target of a unity-build for a one time executable
-REM  binary-output-path : a relative path where the generator.exe will be written, 
+REM  binary-output-path : a relative path where the generator.exe will be written,
 REM                       assumed to be "." if unset
 REM  mode : if set to "release" builds with optimizations
 
@@ -10,11 +10,11 @@ set location=%cd%
 set me="%~dp0"
 cd %me%
 cd ..
-set custom_root=%cd%
+set custom_root=Y:\Apps\4ed\code\custom
 set custom_bin=%custom_root%\bin
 cd %location%
 
-if NOT "%Platform%" == "X64" IF NOT "%Platform%" == "x64" (call "%custom_root%\windows_scripts\setup_cl_x64.bat")
+if NOT "%Platform%" == "X64" IF NOT "%Platform%" == "x64" (call "%custom_root%\bin\setup_cl_x64.bat")
 
 set target=%1
 if "%target%" == "" (echo error: no input file & exit)

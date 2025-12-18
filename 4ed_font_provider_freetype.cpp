@@ -123,29 +123,55 @@ ft__bad_rect_pack_end_line(Bad_Rect_Pack *pack){
     pack->p.x = 0;
 }
 
+
 internal Vec3_i32
 ft__bad_rect_pack_next(Bad_Rect_Pack *pack, Vec2_i32 dim){
-    Vec3_i32 result = {};
-    if (dim.x <= pack->max_dim.x && dim.y <= pack->max_dim.y){
-        if (pack->current_line_h < dim.y){
-            pack->current_line_h = dim.y;
+    Vec3_i32 result = { };
+
+    // NOTE(simon, 28/02/24): Does this character fit in the texture if it's the only character ?
+    if ( dim.x <= pack->max_dim.x && dim.y <= pack->max_dim.y ){
+
+        b8 end_line = false;
+
+        if ( pack->p.x + dim.x > pack->max_dim.x ) {
+            // NOTE(simon, 28/02/24): Can't fit the character horizontally.
+            end_line = true;
         }
-        if (pack->current_line_h > pack->max_dim.y){
-            ft__bad_rect_pack_end_line(pack);
+
+        if ( pack->current_line_h < dim.y && pack->p.y + dim.y > pack->max_dim.y ) {
+            // NOTE(simon, 28/02/24): Character doesn't fit in the current line height, AND we
+            // can't grow the line height.
+            end_line = true;
+        }
+
+        if ( end_line ) {
+            ft__bad_rect_pack_end_line( pack );
+        }
+
+        if ( pack->p.y + dim.y > pack->max_dim.y ) {
+            Assert( end_line );
+            // NOTE(simon, 28/02/24): We ended a line. There isn't enough space on a new line to
+            // fit the character vertically. We need to go to the next texture in the array.
+            // In a new texture the character is guaranteed to fit, because of the outer most if.
             pack->p.y = 0;
             pack->dim.z += 1;
             pack->p.z += 1;
+
+            // NOTE(simon, 28/02/24): There are no checks on the z axis range, but texture arrays
+            // have a limit. At the moment it's 2048 on both OpenGL and DirectX.
         }
-        else{
-            if (pack->p.x + dim.x > pack->max_dim.x){
-                ft__bad_rect_pack_end_line(pack);
-            }
-            result = pack->p;
-            pack->p.x += dim.x;
-            pack->current_line_h = Max(pack->current_line_h, dim.y);
-            pack->dim.x = clamp_bot(pack->dim.x, pack->p.x);
+
+        // NOTE(simon, 28/02/24): We are now sure that the character will fit.
+
+        if ( pack->current_line_h < dim.y ) {
+            pack->current_line_h = dim.y;
         }
+
+        result = pack->p;
+        pack->p.x += dim.x;
+        pack->dim.x = Max( pack->dim.x, pack->p.x );
     }
+
     return(result);
 }
 
@@ -156,7 +182,7 @@ ft__bad_rect_store_finish(Bad_Rect_Pack *pack){
 
 internal void
 ft__glyph_bounds_store_uv_raw(Vec3_i32 p, Vec2_i32 dim, Glyph_Bounds *bounds){
-    bounds->uv = Rf32((f32)p.x, (f32)p.y, (f32)dim.x, (f32)dim.y);
+    bounds->uv = Rf32((f32)p.x, (f32)p.y, (f32) (p.x + dim.x), (f32) (p.y + dim.y));
     bounds->w = (f32)p.z;
 }
 
@@ -300,7 +326,10 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
         ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, white.dim), white.dim, &face->white);
         for (u16 i = 0; i < index_count; i += 1){
             Vec2_i32 dim = glyph_bitmaps[i].dim;
-            ft__glyph_bounds_store_uv_raw(ft__bad_rect_pack_next(&pack, V2i32(dim.x+3, dim.y+3)), dim, &face->bounds[i]);
+            Vec3_i32 pos = ft__bad_rect_pack_next(&pack, V2i32(dim.x + 2, dim.y + 2));
+            pos.x += 1;
+            pos.y += 1;
+            ft__glyph_bounds_store_uv_raw(pos, dim, &face->bounds[i]);
         }
         ft__bad_rect_store_finish(&pack);
 
@@ -316,22 +345,20 @@ ft__font_make_face(Arena *arena, Face_Description *description, f32 scale_factor
             Vec3_i32 p = V3i32((i32)face->white.uv.x0, (i32)face->white.uv.y0, (i32)face->white.w);
             Vec3_i32 dim = V3i32(white.dim.x, white.dim.y, 1);
             graphics_fill_texture(texture_kind, texture, p, dim, white.data);
-            face->white.uv.x1 = (face->white.uv.x0 + face->white.uv.x1)/texture_dim.x;
-            face->white.uv.y1 = (face->white.uv.y0 + face->white.uv.y1)/texture_dim.y;
-            face->white.uv.x0 =  face->white.uv.x0/texture_dim.x;
-            face->white.uv.y0 =  face->white.uv.y0/texture_dim.y;
-            face->white.w /= texture_dim.z;
+            face->white.uv.x0 = face->white.uv.x0;
+            face->white.uv.y0 = face->white.uv.y0;
+            face->white.uv.x1 = face->white.uv.x1;
+            face->white.uv.y1 = face->white.uv.y1;
         }
 
         for (u16 i = 0; i < index_count; i += 1){
             Vec3_i32 p = V3i32((i32)face->bounds[i].uv.x0, (i32)face->bounds[i].uv.y0, (i32)face->bounds[i].w);
             Vec3_i32 dim = V3i32(glyph_bitmaps[i].dim.x, glyph_bitmaps[i].dim.y, 1);
             graphics_fill_texture(texture_kind, texture, p, dim, glyph_bitmaps[i].data);
-            face->bounds[i].uv.x1 = (face->bounds[i].uv.x0 + face->bounds[i].uv.x1)/texture_dim.x;
-            face->bounds[i].uv.y1 = (face->bounds[i].uv.y0 + face->bounds[i].uv.y1)/texture_dim.y;
-            face->bounds[i].uv.x0 =  face->bounds[i].uv.x0/texture_dim.x;
-            face->bounds[i].uv.y0 =  face->bounds[i].uv.y0/texture_dim.y;
-            face->bounds[i].w /= texture_dim.z;
+            face->bounds[i].uv.x0 = face->bounds[i].uv.x0;
+            face->bounds[i].uv.y0 = face->bounds[i].uv.y0;
+            face->bounds[i].uv.x1 = face->bounds[i].uv.x1;
+            face->bounds[i].uv.y1 = face->bounds[i].uv.y1;
         }
 
         {

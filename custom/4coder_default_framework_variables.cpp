@@ -22,6 +22,7 @@ CUSTOM_ID(attachment, buffer_map_id);
 CUSTOM_ID(attachment, buffer_eol_setting);
 CUSTOM_ID(attachment, buffer_lex_task);
 CUSTOM_ID(attachment, buffer_wrap_lines);
+CUSTOM_ID(attachment, buffer_language);
 
 CUSTOM_ID(attachment, sticky_jump_marker_handle);
 CUSTOM_ID(attachment, attachment_tokens);

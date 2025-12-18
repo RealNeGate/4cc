@@ -28,15 +28,15 @@ enum{
 
 struct Code_Index_Nest{
     Code_Index_Nest *next;
-    
+
     Code_Index_Nest_Kind kind;
     b32 is_closed;
     Range_i64 open;
     Range_i64 close;
-    
+
     struct Code_Index_File *file;
     Code_Index_Nest *parent;
-    
+
     Code_Index_Nest_List nest_list;
     Code_Index_Nest_Ptr_Array nest_array;
 };
@@ -46,6 +46,7 @@ enum{
     CodeIndexNote_Type,
     CodeIndexNote_Function,
     CodeIndexNote_Macro,
+    CodeIndexNote_Enum,
     CodeIndexNote_4coderCommand,
 };
 
@@ -56,7 +57,7 @@ struct Code_Index_Note{
     String_Const_u8 text;
     struct Code_Index_File *file;
     Code_Index_Nest *parent;
-    
+
     Code_Index_Note *prev_in_hash;
     Code_Index_Note *next_in_hash;
 };
@@ -95,33 +96,28 @@ struct Code_Index{
     Code_Index_File_Storage *storage_first;
     Code_Index_File_Storage *storage_last;
     i32 storage_count;
-    
+
     Code_Index_Note_List name_hash[4099];
 };
 
 ////////////////////////////////
-
-typedef void Generic_Parse_Comment_Function(Application_Links *app, Arena *arena, Code_Index_File *index,
-                                            Token *token, String_Const_u8 contents);
 
 struct Generic_Parse_State{
     Application_Links *app;
     Arena *arena;
     String_Const_u8 contents;
     Token_Iterator_Array it;
-    Generic_Parse_Comment_Function *handle_comment;
     u8 *prev_line_start;
     b32 finished;
-    
+
     i32 scope_counter;
     i32 paren_counter;
     b32 in_preprocessor;
     b32 in_statement;
-    
+
     b32 do_cpp_parse;
 };
 
 #endif
 
 // BOTTOM
-

@@ -182,7 +182,7 @@ get_defines_from_flags(Arena *arena, u32 flags){
 #define CL_OPTS                                  \
 "-W4 -wd4310 -wd4100 -wd4201 -wd4505 -wd4996 "  \
 "-wd4127 -wd4510 -wd4512 -wd4610 -wd4390 "      \
-"-wd4611 -wd4189 -WX -GR- -EHa- -nologo -FC"
+"-wd4611 -wd4189 -WX -GR- -EHa- -nologo -FC "
 
 #define CL_LIBS_COMMON \
 "user32.lib winmm.lib gdi32.lib opengl32.lib comdlg32.lib userenv.lib "

@@ -86,7 +86,7 @@ char *gl__vertex = R"foo(
         void main(void)
         {
         gl_Position = vec4(view_m*(vertex_p - view_t), 0.0, 1.0);
-         fragment_color.b = (float((vertex_c     )&0xFFu))/255.0;
+        fragment_color.b = (float((vertex_c     )&0xFFu))/255.0;
         fragment_color.g = (float((vertex_c>> 8u)&0xFFu))/255.0;
         fragment_color.r = (float((vertex_c>>16u)&0xFFu))/255.0;
         fragment_color.a = (float((vertex_c>>24u)&0xFFu))/255.0;
@@ -118,7 +118,7 @@ char *gl__fragment = R"foo(
         float has_thickness = (step(0.49, half_thickness));
         float does_not_have_thickness = 1.0 - has_thickness;
 
-        float sample_value = texture(sampler, uvw).r;
+        float sample_value = texelFetch(sampler, ivec3(uvw), 0).r;
         sample_value *= does_not_have_thickness;
 
         vec2 center = uvw.xy;
@@ -129,7 +129,7 @@ char *gl__fragment = R"foo(
         float shape_value = 1.0 - smoothstep(-1.0, 0.0, sd);
         shape_value *= has_thickness;
 
-        out_color = vec4(fragment_color.xyz, fragment_color.a*(sample_value + shape_value));
+        out_color = vec4(fragment_color.xyz, fragment_color.a*(shape_value+sample_value));
         }
         )foo";
 
