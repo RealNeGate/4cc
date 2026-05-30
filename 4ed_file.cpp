@@ -139,7 +139,7 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
             models->save_file(&app, file->id);
         }
 
-        Gap_Buffer *buffer = &file->state.buffer;
+        PieceTable *buffer = &file->state.buffer;
         b32 dos_write_mode = file->settings.dos_write_mode;
 
         Scratch_Block scratch(tctx);
@@ -246,7 +246,9 @@ file_free(Thread_Context *tctx, Models *models, Editing_File *file){
 
     lifetime_free_object(lifetime_allocator, file->lifetime_object);
 
-    Gap_Buffer *buffer = &file->state.buffer;
+    PieceTable *buffer = &file->state.buffer;
+    pt_free(buffer);
+
     if (buffer->data){
         base_free(buffer->allocator, buffer->data);
         base_free(buffer->allocator, buffer->line_starts);

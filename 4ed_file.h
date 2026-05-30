@@ -49,20 +49,20 @@ enum{
 };
 
 struct Editing_File_State{
-    Gap_Buffer buffer;
-    
+    PieceTable buffer;
+
     History history;
     i32 current_record_index;
-    
+
     Dirty_State dirty;
     File_Save_State save_state;
-    
+
     File_Edit_Positions edit_pos_most_recent;
     File_Edit_Positions edit_pos_stack[16];
     i32 edit_pos_stack_top;
-    
+
     Child_Process_ID attached_child_process;
-    
+
     Arena cached_layouts_arena;
     Table_Data_u64 line_layout_table;
 };
