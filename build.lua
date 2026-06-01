@@ -15,13 +15,13 @@ end
 local cflags = "-g -Wno-null-dereference -rdynamic -fuse-ld=lld -O0 -Wno-write-strings -DUSE_SPALL_AUTO -finstrument-functions"
 local libs = ""
 
---[[cflags = cflags.." -I /home/linuxbrew/.linuxbrew/include/"
+cflags = cflags.." -I /home/linuxbrew/.linuxbrew/include/"
 cflags = cflags.." -I /home/linuxbrew/.linuxbrew/opt/libx11/include"
 cflags = cflags.." -I /home/linuxbrew/.linuxbrew/opt/freetype2/include/freetype2"
 cflags = cflags.." -I /home/linuxbrew/.linuxbrew/opt/xorgproto/include"
 cflags = cflags.." -I /home/linuxbrew/.linuxbrew/opt/libxcb/include"
-cflags = cflags.." -L /home/linuxbrew/.linuxbrew/lib -L /home/linuxbrew/.linuxbrew/lib/gcc/15"]]--
-cflags = cflags.." -I /usr/include/freetype2"
+cflags = cflags.." -L /home/linuxbrew/.linuxbrew/lib -L /home/linuxbrew/.linuxbrew/lib/gcc/15"
+-- cflags = cflags.." -I /usr/include/freetype2"
 
 if true then -- GCC
 	cflags = cflags.." -D_GNU_SOURCE -fPIC"

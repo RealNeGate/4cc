@@ -131,25 +131,21 @@ buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i32 count,
 
 //////////////////////////////////////
 
-internal b32
-buffer_good(Gap_Buffer *buffer){
-    return(buffer->data != 0);
+internal i64
+buffer_size(PieceTable *buffer){
+    return pt_total_size(buffer);
 }
 
 internal i64
-buffer_size(Gap_Buffer *buffer){
-    return(buffer->size1 + buffer->size2);
-}
-
-internal i64
-buffer_line_count(Gap_Buffer *buffer){
-    return(buffer->line_start_count - 1);
+buffer_line_count(PieceTable *buffer){
+    return pt_get_line_count(buffer);
 }
 
 internal void
-buffer_init(Gap_Buffer *buffer, u8 *data, u64 size, Base_Allocator *allocator){
+buffer_init(PieceTable *buffer, u8 *data, u64 size, Base_Allocator *allocator){
     block_zero_struct(buffer);
 
+    #if 0
     buffer->allocator = allocator;
 
     u64 capacity = round_up_u64(size*2, KB(4));
@@ -162,75 +158,20 @@ buffer_init(Gap_Buffer *buffer, u8 *data, u64 size, Base_Allocator *allocator){
 
     block_copy(buffer->data, data, buffer->size1);
     block_copy(buffer->data + buffer->size1 + buffer->gap_size, data + buffer->size1, buffer->size2);
+    #endif
+
+    String_Const_u8 memory = base_allocate(allocator, size);
+    block_copy(memory.str, data, size);
+    pt_alloc2(buffer, size, (const char*) memory.str);
 }
 
 internal b32
-buffer_replace_range(Gap_Buffer *buffer, Range_i64 range, String_Const_u8 text, i64 shift_amount){
-    i64 size = buffer_size(buffer);
-    Assert(0 <= range.start);
-    Assert(range.start <= range.end);
-    Assert(range.end <= size);
-
-    if (shift_amount + size > buffer->max){
-        i64 new_max = round_up_i64(2*(shift_amount + size), KB(4));
-        i64 new_gap_size = new_max - size;
-        String_Const_u8 new_memory_data = base_allocate(buffer->allocator, new_max);
-        u8 *new_memory = (u8*)new_memory_data.str;
-        block_copy(new_memory, buffer->data, buffer->size1);
-        block_copy(new_memory + buffer->size1 + new_gap_size, buffer->data + buffer->size1 + buffer->gap_size,
-            buffer->size2);
-        base_free(buffer->allocator, buffer->data);
-        buffer->data = new_memory;
-        buffer->gap_size = new_gap_size;
-        buffer->max = new_max;
-    }
-
-    Assert(shift_amount + size <= buffer->max);
-
-    b32 result = false;
-
-    if (range.end < buffer->size1){
-        i64 move_size = buffer->size1 - range.end;
-        block_copy(buffer->data + buffer->size1 + buffer->gap_size - move_size,
-            buffer->data + range.end,
-            move_size);
-        buffer->size1 -= move_size;
-        buffer->size2 += move_size;
-    }
-    if (range.start > buffer->size1){
-        i64 move_size = range.start - buffer->size1;
-        block_copy(buffer->data + buffer->size1,
-            buffer->data + buffer->size1 + buffer->gap_size,
-            move_size);
-        buffer->size1 += move_size;
-        buffer->size2 -= move_size;
-    }
-
-    block_copy(buffer->data + range.start, text.str, text.size);
-    buffer->size2 = size - range.end;
-    buffer->size1 = range.start + text.size;
-    buffer->gap_size -= shift_amount;
-
-    Assert(buffer->size1 + buffer->size2 == size + shift_amount);
-    Assert(buffer->size1 + buffer->gap_size + buffer->size2 == buffer->max);
-
-    return(result);
+buffer_replace_range(PieceTable *buffer, Range_i64 range, String_Const_u8 text, i64 shift_amount){
+    pt_replace_range(buffer, range.start, range.end, text.size, (const char*) text.str);
+    return false;
 }
 
 ////////////////////////////////
-
-internal List_String_Const_u8
-buffer_get_chunks(Arena *arena, Gap_Buffer *buffer){
-    List_String_Const_u8 list = {};
-    if (buffer->size1 > 0){
-        string_list_push(arena, &list, SCu8(buffer->data, buffer->size1));
-    }
-    if (buffer->size2 > 0){
-        u64 gap_2_pos = buffer->size1 + buffer->gap_size;
-        string_list_push(arena, &list, SCu8(buffer->data + gap_2_pos, buffer->size2));
-    }
-    return(list);
-}
 
 internal void
 buffer_chunks_clamp(List_String_Const_u8 *chunks, Range_i64 range){
@@ -256,14 +197,18 @@ buffer_chunks_clamp(List_String_Const_u8 *chunks, Range_i64 range){
 }
 
 internal String_Const_u8
-buffer_stringify(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
-    List_String_Const_u8 list = buffer_get_chunks(arena, buffer);
-    buffer_chunks_clamp(&list, range);
-    return(string_list_flatten(arena, list, StringFill_NullTerminate));
+buffer_stringify(Arena *arena, PieceTable *buffer, Range_i64 range){
+    char *buf = push_array(arena, char, range.end - range.start);
+    size_t written = pt_read_range(buffer, range.start, range.end, buf);
+    assert(written == range.end - range.start);
+    return SCu8((u8*)buf, written);
 }
 
 internal String_Const_u8
-buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
+buffer_eol_convert_out(Arena *arena, PieceTable *buffer, Range_i64 range){
+    assert(0 && "TODO");
+
+    #if 0
     List_String_Const_u8 list = buffer_get_chunks(arena, buffer);
     buffer_chunks_clamp(&list, range);
     u64 cap = list.total_size*2;
@@ -291,103 +236,17 @@ buffer_eol_convert_out(Arena *arena, Gap_Buffer *buffer, Range_i64 range){
     linalloc_pop(arena, (memory_opl - ptr));
     push_align(arena, 8);
     return(SCu8(memory, ptr));
-}
-
-#if 0
-internal i64
-buffer_count_newlines(Arena *scratch, Gap_Buffer *buffer, i64 start, i64 end){
-    Temp_Memory temp = begin_temp(scratch);
-    List_String_Const_u8 list = buffer_get_chunks(scratch, buffer);
-    buffer_chunks_clamp(&list, Ii64(start, end));
-
-    i64 count = 0;
-    for (Node_String_Const_u8 *node = list.first;
-        node != 0;
-        node = node->next){
-        u8 *byte = node->string.str;
-        u8 *byte_opl = byte + node->string.size;
-        for (;byte < byte_opl; byte += 1){
-            if (*byte == '\n'){
-                count += 1;
-            }
-        }
-    }
-
-    end_temp(temp);
-
-    return(count);
-}
-#endif
-
-internal void
-buffer_starts__ensure_max_size(Gap_Buffer *buffer, i64 max_size){
-    if (max_size > buffer->line_start_max){
-        i64 new_max = round_up_i64(max_size*2, KB(1));
-        String_Const_u8 memory = base_allocate(buffer->allocator, sizeof(*buffer->line_starts)*new_max);
-        i64 *new_line_starts = (i64*)memory.str;
-        block_copy_dynamic_array(new_line_starts, buffer->line_starts, buffer->line_start_count);
-        buffer->line_start_max = new_max;
-        base_free(buffer->allocator, buffer->line_starts);
-        buffer->line_starts = new_line_starts;
-    }
-}
-
-internal void
-buffer_measure_starts__write(Gap_Buffer *buffer, i64 pos){
-    buffer_starts__ensure_max_size(buffer, buffer->line_start_count + 1);
-    buffer->line_starts[buffer->line_start_count] = pos;
-    buffer->line_start_count += 1;
-}
-
-internal void
-buffer_measure_starts(Arena *scratch, Gap_Buffer *buffer){
-    Temp_Memory temp = begin_temp(scratch);
-    List_String_Const_u8 list = buffer_get_chunks(scratch, buffer);
-    buffer->line_start_count = 0;
-    buffer_measure_starts__write(buffer, 0);
-    i64 index = 0;
-    for (Node_String_Const_u8 *node = list.first;
-        node != 0;
-        node = node->next){
-        u8 *byte = node->string.str;
-        u8 *byte_opl = byte + node->string.size;
-        for (;byte < byte_opl; byte += 1){
-            index += 1;
-            if (*byte == '\n'){
-                buffer_measure_starts__write(buffer, index);
-            }
-        }
-    }
-    buffer_measure_starts__write(buffer, buffer_size(buffer));
-    end_temp(temp);
+    #endif
 }
 
 internal i64
-buffer_get_line_index(Gap_Buffer *buffer, i64 pos){
-    i64 i = 0;
-    if (buffer->line_start_count > 2){
-        i64 start = 0;
-        i64 one_past_last = buffer->line_start_count - 1;
-        i64 *array = buffer->line_starts;
-        pos = clamp_bot(0, pos);
-        for (;;){
-            i = (start + one_past_last) >> 1;
-            if (array[i] < pos){
-                start = i;
-            }
-            else if (array[i] > pos){
-                one_past_last = i;
-            }
-            else{
-                break;
-            }
-            if (start + 1 >= one_past_last){
-                i = start;
-                break;
-            }
-        }
+buffer_get_line_index(PieceTable *buffer, i64 pos){
+    if (pos == 0) {
+        return 0;
     }
-    return(i);
+
+    PT_Cursor left = pt_lookup(&buffer->line_starts, pos - 1);
+    return left.node ? pt_get_absolute_index(left.node, left.index) : 0;
 }
 
 Line_Move*
@@ -415,168 +274,84 @@ push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
     return(move);
 }
 
-function i64
-count_lines(String_Const_u8 string){
-    i64 result = 0;
-    for (u64 i = 0; i < string.size; i += 1){
-        if (string.str[i] == '\n'){
-            result += 1;
-        }
-    }
-    return(result);
-}
-
-function void
-fill_line_starts(i64 *lines_starts, String_Const_u8 string, i64 text_base){
-    i64 *ptr = lines_starts;
-    for (u64 i = 0; i < string.size; i += 1){
-        if (string.str[i] == '\n'){
-            *ptr = text_base + i + 1;
-            ptr += 1;
-        }
-    }
-}
-
-function void
-buffer_remeasure_starts(Thread_Context *tctx, Gap_Buffer *buffer, Batch_Edit *batch){
-    Scratch_Block scratch(tctx);
-
-    i64 line_start_count = buffer_line_count(buffer) + 1;
-
-    Line_Move *moves = 0;
-    i64 current_line = 0;
-    i64 text_shift = 0;
-    i64 line_shift = 0;
-    for (Batch_Edit *node = batch;
-        node != 0;
-        node = node->next){
-        i64 first_line = buffer_get_line_index(buffer, node->edit.range.first);
-        i64 opl_line = buffer_get_line_index(buffer, node->edit.range.one_past_last);
-        i64 new_line_count = count_lines(node->edit.text);
-        i64 deleted_line_count = opl_line - first_line;
-
-        Assert(first_line <= opl_line);
-        Assert(opl_line <= line_start_count);
-
-        if (current_line <= first_line &&
-            (text_shift != 0 || line_shift != 0)){
-            moves = push_line_move(scratch, moves, current_line + line_shift,
-                current_line, first_line + 1, text_shift);
-        }
-
-        if (new_line_count != 0){
-            moves = push_line_move(scratch, moves, first_line + 1 + line_shift,
-                node->edit.text, node->edit.range.first + text_shift);
-        }
-
-        text_shift += node->edit.text.size - range_size(node->edit.range);
-        line_shift += new_line_count - deleted_line_count;
-        current_line = opl_line + 1;
-    }
-
-    moves = push_line_move(scratch, moves, current_line + line_shift,
-        current_line, line_start_count, text_shift);
-    line_start_count = line_start_count + line_shift;
-
-    buffer_starts__ensure_max_size(buffer, line_start_count + 1);
-    buffer->line_start_count = line_start_count;
-
-    i64 *array = buffer->line_starts;
-
-    for (Line_Move *node = moves;
-        node != 0;
-        node = node->next){
-        if (node->kind == LineMove_ShiftOldValues){
-            i64 line_index_shift = node->new_line_first - node->old_line_first;
-            i64 move_text_shift = node->text_shift;
-            if (line_index_shift > 0){
-                for (i64 i = node->old_line_opl - 1;
-                    i >= node->old_line_first;
-                    i -= 1){
-                    array[i + line_index_shift] = array[i] + move_text_shift;
-                }
-            }
-            else{
-                for (i64 i = node->old_line_first;
-                    i < node->old_line_opl;
-                    i += 1){
-                    array[i + line_index_shift] = array[i] + move_text_shift;
-                }
-            }
-        }
-    }
-
-    for (Line_Move *node = moves;
-        node != 0;
-        node = node->next){
-        if (node->kind == LineMove_MeasureString){
-            fill_line_starts(array + node->new_line_first, node->string, node->text_base);
-        }
-    }
-}
+internal Buffer_Cursor
+buffer_cursor_from_pos(PieceTable *buffer, i64 pos);
 
 internal Range_i64
-buffer_get_pos_range_from_line_number(Gap_Buffer *buffer, i64 line_number){
+buffer_get_pos_range_from_line_number(PieceTable *buffer, i64 line_number){
     Range_i64 result = {};
-    if (1 <= line_number && line_number < buffer->line_start_count){
-        result.first = buffer->line_starts[line_number - 1];
-        result.one_past_last = buffer->line_starts[line_number];
+    if (1 <= line_number && line_number <= buffer_line_count(buffer)){
+        PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_number - 1);
+        result.first = line_number > 1 ? left.key + 1 : 0;
+        result.one_past_last = left.key + pt_get_val(left)->length + 1;
+        result.one_past_last = clamp_top(result.one_past_last, buffer_size(buffer));
+
+        // printf("R %lu => %lu %lu %lu\n", line_number, result.first, result.one_past_last, pt_get_val(left)->length);
+        // Buffer_Cursor r = buffer_cursor_from_pos(buffer, result.first);
+        // printf("  %lu %lu\n", r.line, r.col);
     }
     return(result);
 }
 
 internal i64
-buffer_get_first_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
+buffer_get_first_pos_from_line_number(PieceTable *buffer, i64 line_number){
     i64 result = 0;
     if (line_number < 1){
         result = 0;
     }
-    else if (line_number >= buffer->line_start_count){
+    else if (line_number > buffer_line_count(buffer)){
         result = buffer_size(buffer);
     }
     else{
-        result = buffer->line_starts[line_number - 1];
+        PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_number - 1);
+        assert(left.node);
+        result = left.key;
     }
     return(result);
 }
 
 internal i64
-buffer_get_last_pos_from_line_number(Gap_Buffer *buffer, i64 line_number){
+buffer_get_last_pos_from_line_number(PieceTable *buffer, i64 line_number){
     i64 result = 0;
     if (line_number < 1){
         result = 0;
     }
-    else if (line_number >= buffer->line_start_count - 1){
+    else if (line_number >= buffer_line_count(buffer)){
         result = buffer_size(buffer);
     }
     else{
-        result = buffer->line_starts[line_number] - 1;
+        PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_number);
+        assert(left.node);
+        result = left.key;
     }
     return(result);
 }
 
 internal Buffer_Cursor
-buffer_cursor_from_pos(Gap_Buffer *buffer, i64 pos){
+buffer_cursor_from_pos(PieceTable *buffer, i64 pos){
     i64 size = buffer_size(buffer);
     pos = clamp(0, pos, size);
-    i64 line_index = buffer_get_line_index(buffer, pos);
+
+    PT_Cursor left = pt_lookup(&buffer->line_starts, pos ? pos - 1 : 0);
+    i64 line_index = left.node ? pt_get_absolute_index(left.node, left.index) : 0;
 
     Buffer_Cursor result = {};
-    result.pos = pos;
+    result.pos  = pos;
     result.line = line_index + 1;
-    result.col = pos - buffer->line_starts[line_index] + 1;
+    result.col  = (pos - (left.key ? left.key + 1 : 0)) + 1;
     return(result);
 }
 
 internal Buffer_Cursor
-buffer_cursor_from_line_col(Gap_Buffer *buffer, i64 line, i64 col){
+buffer_cursor_from_line_col(PieceTable *buffer, i64 line, i64 col){
     i64 size = buffer_size(buffer);
     i64 line_index = line - 1;
     i64 line_count = buffer_line_count(buffer);
     line_index = clamp(0, line_index, line_count - 1);
 
-    i64 this_start = buffer->line_starts[line_index];
-    i64 max_col = (buffer->line_starts[line_index + 1] - this_start);
+    PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_index);
+    i64 this_start = left.key ? left.key + 1 : 0;
+    i64 max_col    = pt_get_val(left)->length - !!left.key;
     if (line_index + 1 == line_count){
         max_col += 1;
     }

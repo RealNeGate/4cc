@@ -9,6 +9,15 @@
 #define strdup _strdup
 #endif
 
+size_t pt_get_sum(PT_Node* n, int i) {
+    if (n->is_leaf) {
+        return 1;
+    } else {
+        PT_Node** kids = (PT_Node**) (n + 1);
+        return kids[i]->sum;
+    }
+}
+
 static int pt_bin_search(PT_Node* node, uint64_t key) {
     size_t left = 0, right = node->count;
     if (node->is_leaf) {
@@ -200,6 +209,33 @@ static void pt_split_child(PT_Node* x, PT_Node* y, int idx, uint64_t base) {
     y->length = middle;
 }
 
+PT_Cursor pt_lookup_by_abs_index(PT_Table* table, uint64_t k) {
+    PT_Node* node = table->root;
+    if (node == NULL) {
+        return (PT_Cursor){ 0 };
+    }
+
+    // layers of binary search
+    uint64_t pos = 0;
+    for (;;) {
+        if (node->is_leaf) {
+            return (PT_Cursor){ node, k, pos + node->keys[k] };
+        } else {
+            int i = 0;
+            uint64_t curr = 0;
+            PT_Node** kids = (PT_Node**) (node + 1);
+            for (; i < node->count; i++) {
+                uint64_t next = curr + kids[i]->sum;
+                if (k < next) { break; }
+                curr = next, pos += kids[i]->length;
+            }
+
+            k -= curr;
+            node = ((PT_Node**) (node + 1))[i];
+        }
+    }
+}
+
 PT_Cursor pt_lookup(PT_Table* table, uint64_t k) {
     uint64_t start_k = k;
     PT_Node* node = table->root;
@@ -246,15 +282,6 @@ size_t pt_get_entry_length(PT_Node* n, int i) {
     } else {
         PT_Node** kids = (PT_Node**) (n + 1);
         return kids[i]->length;
-    }
-}
-
-size_t pt_get_sum(PT_Node* n, int i) {
-    if (n->is_leaf) {
-        return 1;
-    } else {
-        PT_Node** kids = (PT_Node**) (n + 1);
-        return kids[i]->sum;
     }
 }
 
@@ -564,36 +591,47 @@ PT_Cursor pt_insert(PT_Table* table, uint64_t k, PT_Val v) {
     }
 }
 
+void pt_free(PieceTable* pt) {
+    // TODO(NeGate)
+}
+
 bool pt_alloc(PieceTable* pt, const char* path) {
+    FILE* file = fopen(path, "rb");
+    if (!file) {
+        printf("Could not read file: %s\n", path);
+        return false;
+    }
+
+    int descriptor = fileno(file);
+
+    struct stat file_stats;
+    if (fstat(descriptor, &file_stats) == -1) {
+        fclose(file);
+        abort();
+    }
+
+    size_t size  = file_stats.st_size;
+    char* buffer = malloc(size);
+
+    fseek(file, 0, SEEK_SET);
+    fread(buffer, 1, size, file);
+    fclose(file);
+
+    return pt_alloc2(pt, size, buffer);
+}
+
+bool pt_alloc2(PieceTable* pt, size_t length, const char* data) {
     memset(pt, 0, sizeof(*pt));
 
     pt->added_buffer_cap = 16*1024;
     pt->added_buffer = malloc(pt->added_buffer_cap);
 
+    pt->og_buffer_size = length;
+    pt->og_buffer      = data;
+
     // Initialize the original buffer, we could file map this stuff...
-    if (path != NULL) {
-        FILE* file = fopen(path, "rb");
-        if (!file) {
-            printf("Could not read file: %s\n", path);
-            return false;
-        }
-
-        int descriptor = fileno(file);
-
-        struct stat file_stats;
-        if (fstat(descriptor, &file_stats) == -1) {
-            fclose(file);
-            abort();
-        }
-
-        pt->og_buffer_size = file_stats.st_size;
-        pt->og_buffer = malloc(pt->og_buffer_size);
-
-        fseek(file, 0, SEEK_SET);
-        fread(pt->og_buffer, 1, pt->og_buffer_size, file);
-        fclose(file);
-
-        pt_insert(&pt->piece_tables, 0, (PT_Val){ 0, 0, pt->og_buffer_size });
+    if (length > 0) {
+        pt_insert(&pt->piece_tables, 0, (PT_Val){ 0, 0, length });
 
         // TODO(NeGate): We should be inflating the line start
         // buffer based on the original buffer.
@@ -695,11 +733,14 @@ void pt_validate_lines(PieceTable* pt) {
 
 static void pt_notify_added_lines(PieceTable* pt, uint64_t pos, size_t length, const char* text) {
     // Grow space, this will shift things up
-    {
+    if (pt->line_starts.root) {
         PT_Cursor left = pt_lookup(&pt->line_starts, pos ? pos - 1 : 0);
         PT_Val* piece = pt_get_val(left);
         piece->length += length;
         pt_notify_length_change(left.node, left.index, length, 0);
+    } else {
+        assert(pos == 0);
+        pt_insert(&pt->line_starts, 0, (PT_Val){ 0, 0, length });
     }
 
     // Split range accordingly
@@ -900,6 +941,10 @@ uint64_t pt_get_absolute_index(PT_Node* n, int i) {
 
     pt_timings[1] += get_nanos() - start_time, pt_calls[1]++;
     return total;
+}
+
+uint64_t pt_get_line_count(PieceTable* pt) {
+    return pt->line_starts.root ? pt->line_starts.root->sum : 0;
 }
 
 size_t pt_total_size(PieceTable* pt) {

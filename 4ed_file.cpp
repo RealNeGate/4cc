@@ -152,6 +152,7 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
             }
         }
 
+        // TODO(NeGate): snapshot the piece table to do async saving
         String_Const_u8 saveable_string = buffer_stringify(scratch, buffer, Ii64(0, buffer_size(buffer)));
 
         File_Attributes new_attributes = system_save_file(scratch, (char*)file_name, saveable_string);
@@ -205,11 +206,8 @@ file_create_from_string(Thread_Context *tctx, Models *models, Editing_File *file
     }
     file_clear_dirty_flags(file);
     file->attributes = attributes;
-
     file->settings.layout_func = models->layout_func;
     file->settings.face_id = models->global_face_id;
-
-    buffer_measure_starts(scratch, &file->state.buffer);
 
     file->lifetime_object = lifetime_alloc_object(&models->lifetime_allocator, DynamicWorkspace_Buffer, file);
     history_init(tctx, models, &file->state.history);
@@ -248,11 +246,6 @@ file_free(Thread_Context *tctx, Models *models, Editing_File *file){
 
     PieceTable *buffer = &file->state.buffer;
     pt_free(buffer);
-
-    if (buffer->data){
-        base_free(buffer->allocator, buffer->data);
-        base_free(buffer->allocator, buffer->line_starts);
-    }
 
     history_free(tctx, &file->state.history);
 
@@ -293,7 +286,6 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
         key.line_number = line_number;
 
         String_Const_u8 key_data = make_data_struct(&key);
-
         Layout_Item_List *list = 0;
 
         Table_Lookup lookup = table_lookup(&file->state.line_layout_table, key_data);
@@ -411,7 +403,7 @@ file_pos_at_relative_xy(Thread_Context *tctx, Models *models, Editing_File *file
     Line_Shift_Vertical shift = file_line_shift_y(tctx, models, file, layout_func, width, face, base_line, relative_xy.y);
     relative_xy.y -= shift.y_delta;
     Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, shift.line);
-    return(layout_nearest_pos_to_xy(face->metrics.line_height, line, relative_xy));
+    return layout_nearest_pos_to_xy(face->metrics.line_height, line, relative_xy);
 }
 
 internal Rect_f32

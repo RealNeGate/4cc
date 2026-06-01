@@ -290,13 +290,15 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
     Editing_File *file = imp_get_file(models, buffer);
     String_Match result = {};
     if (api_check_buffer(file)){
+        assert(0);
+        #if 0
         if (needle.size == 0){
             result.flags = StringMatch_CaseSensitive;
             result.range = Ii64(start_pos);
         }
         else{
             Scratch_Block scratch(app);
-            Gap_Buffer *gap_buffer = &file->state.buffer;
+            PieceTable *gap_buffer = &file->state.buffer;
             i64 size = buffer_size(gap_buffer);
             List_String_Const_u8 chunks = buffer_get_chunks(scratch, gap_buffer);
             Range_i64 range = {};
@@ -325,6 +327,7 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
                 result.range = Ii64(start_pos);
             }
         }
+        #endif
     }
     return(result);
 }
@@ -335,8 +338,11 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
     Editing_File *file = imp_get_file(models, buffer);
     String_Match result = {};
     if (api_check_buffer(file)){
+        assert(0);
+
+        #if 0
         Scratch_Block scratch(app);
-        Gap_Buffer *gap_buffer = &file->state.buffer;
+        PieceTable *gap_buffer = &file->state.buffer;
         List_String_Const_u8 chunks_list = buffer_get_chunks(scratch, gap_buffer);
 
         if (chunks_list.node_count > 0){
@@ -379,6 +385,7 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
                 }
             }
         }
+        #endif
     }
     return(result);
 }
@@ -1183,7 +1190,7 @@ api(custom) function f32
 view_get_preferred_x(Application_Links *app, View_ID view_id){
     Models *models = (Models*)app->cmd_context;
     View *view = imp_get_view(models, view_id);
-    f32 result = 0.f;;
+    f32 result = 0.f;
     if (api_check_view(view)){
         result = view->preferred_x;
     }
@@ -2913,7 +2920,7 @@ text_layout_create(Application_Links *app, Buffer_ID buffer_id, Rect_f32 rect, B
         Thread_Context *tctx = app->tctx;
         Face *face = file_get_face(models, file);
 
-        Gap_Buffer *buffer = &file->state.buffer;
+        PieceTable *buffer = &file->state.buffer;
 
         Layout_Function *layout_func = file_get_layout_func(file);
 
@@ -3035,7 +3042,7 @@ text_layout_character_on_screen(Application_Links *app, Text_Layout_ID layout_id
     if (layout != 0 && range_contains_inclusive(layout->visible_range, pos)){
         Editing_File *file = imp_get_file(models, layout->buffer_id);
         if (api_check_buffer(file)){
-            Gap_Buffer *buffer = &file->state.buffer;
+            PieceTable *buffer = &file->state.buffer;
             i64 line_number = buffer_get_line_index(buffer, pos) + 1;
 
             if (range_contains_inclusive(layout->visible_line_number_range, line_number)){
@@ -3177,6 +3184,8 @@ buffer_find_all_matches(Application_Links *app, Arena *arena, Buffer_ID buffer,
     Editing_File *file = imp_get_file(models, buffer);
     String_Match_List list = {};
     if (api_check_buffer(file)){
+        assert(0);
+        #if 0
         if (needle.size > 0){
             Scratch_Block scratch(app, arena);
             List_String_Const_u8 chunks = buffer_get_chunks(scratch, &file->state.buffer);
@@ -3192,6 +3201,7 @@ buffer_find_all_matches(Application_Links *app, Arena *arena, Buffer_ID buffer,
                     direction, range.min, buffer, string_id);
             }
         }
+        #endif
     }
     return(list);
 }

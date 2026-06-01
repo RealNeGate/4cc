@@ -79,6 +79,7 @@ extern "C" {
     // Inserts at k, shifting all entries >= k up by v.length
     PT_Cursor pt_insert(PT_Table* table, uint64_t k, PT_Val v);
 
+    PT_Cursor pt_lookup_by_abs_index(PT_Table* table, uint64_t i);
     uint64_t pt_get_absolute_index(PT_Node* n, int i);
 
     ////////////////////////////////
@@ -89,7 +90,7 @@ extern "C" {
     struct PieceTable {
         // This buffer is immutable and ideally file mapped
         size_t og_buffer_size;
-        char* og_buffer;
+        const char* og_buffer;
 
         // This buffer represents any added
         size_t added_buffer_used;
@@ -101,12 +102,14 @@ extern "C" {
         PT_Table piece_tables;
     };
 
+    bool pt_alloc2(PieceTable* pt, size_t length, const char* data);
     bool pt_alloc(PieceTable* pt, const char* path);
     void pt_free(PieceTable* pt);
 
     void pt_replace_range(PieceTable* pt, uint64_t start, uint64_t end, size_t length, const char* text);
     size_t pt_read_range(PieceTable* pt, uint64_t start, uint64_t end, char* dst);
     size_t pt_total_size(PieceTable* pt);
+    uint64_t pt_get_line_count(PieceTable* pt);
 
     #if __cplusplus
 }

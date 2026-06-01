@@ -1808,7 +1808,7 @@ main(int argc, char **argv){
         List_String_Const_u8 search_list = {};
         def_search_list_add_system_path(scratch, &search_list, SystemPath_Binary);
 
-        String_Const_u8 core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app.so"));
+        String_Const_u8 core_path = def_search_get_full_path(scratch, &search_list, SCu8("4ed_app2.so"));
         if (system_load_library(scratch, core_path, &core_library)){
             get_funcs = (App_Get_Functions*)system_get_proc(core_library, "app_get_functions");
             if (get_funcs != 0){
