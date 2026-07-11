@@ -204,41 +204,6 @@ buffer_stringify(Arena *arena, PieceTable *buffer, Range_i64 range){
     return SCu8((u8*)buf, written);
 }
 
-internal String_Const_u8
-buffer_eol_convert_out(Arena *arena, PieceTable *buffer, Range_i64 range){
-    assert(0 && "TODO");
-
-    #if 0
-    List_String_Const_u8 list = buffer_get_chunks(arena, buffer);
-    buffer_chunks_clamp(&list, range);
-    u64 cap = list.total_size*2;
-    u8 *memory = push_array(arena, u8, cap);
-    u8 *memory_opl = memory + cap;
-    u8 *ptr = memory;
-    for (Node_String_Const_u8 *node = list.first;
-        node != 0;
-        node = node->next){
-        u8 *byte = node->string.str;
-        u8 *byte_opl = byte + node->string.size;
-        for (;byte < byte_opl; byte += 1){
-            if (*byte == '\n'){
-                *ptr = '\r';
-                ptr += 1;
-                *ptr = '\n';
-                ptr += 1;
-            }
-            else{
-                *ptr = *byte;
-                ptr += 1;
-            }
-        }
-    }
-    linalloc_pop(arena, (memory_opl - ptr));
-    push_align(arena, 8);
-    return(SCu8(memory, ptr));
-    #endif
-}
-
 internal i64
 buffer_get_line_index(PieceTable *buffer, i64 pos){
     if (pos == 0) {

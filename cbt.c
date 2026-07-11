@@ -201,6 +201,7 @@ static void pt_split_child(PT_Node* x, PT_Node* y, int idx, uint64_t base) {
 
     y->count = DEGREE - !y->is_leaf;
     z->parent = y->parent = x;
+
     z->next = y->next;
     y->next = z;
 
@@ -259,6 +260,15 @@ PT_Cursor pt_lookup(PT_Table* table, uint64_t k) {
     }
 }
 
+static int pt_find_node_in_parent(PT_Node* n) {
+    PT_Node* parent = n->parent;
+    PT_Node** kids = (PT_Node**) (parent + 1);
+    for (int i = 0; i < parent->count + 1; i++) {
+        if (kids[i] == n) { return i; }
+    }
+    return -1;
+}
+
 bool pt_next_cursor(PT_Cursor* it) {
     if (it->index == it->node->count - 1) {
         it->node = it->node->next;
@@ -266,6 +276,40 @@ bool pt_next_cursor(PT_Cursor* it) {
         return it->node != NULL;
     } else {
         it->index += 1;
+        return true;
+    }
+}
+
+bool pt_prev_cursor(PT_Cursor* it) {
+    if (it->index == 0) {
+        // walk up (and left)
+        PT_Node* curr = it->node->parent;
+        while (curr != NULL) {
+            int kid = pt_find_node_in_parent(curr);
+            if (kid > 0) {
+                PT_Node** kids = (PT_Node**) (curr + 1);
+                curr = kids[kid - 1];
+                break;
+            }
+            curr = curr->parent;
+        }
+
+        if (curr == NULL) {
+            it->node = NULL;
+            return false;
+        }
+
+        // walk back down (and right)
+        while (!curr->is_leaf) {
+            PT_Node** kids = (PT_Node**) (curr + 1);
+            curr = kids[curr->count];
+        }
+
+        it->node  = curr;
+        it->index = curr->count - 1;
+        return true;
+    } else {
+        it->index -= 1;
         return true;
     }
 }
@@ -311,15 +355,6 @@ void pt_notify_length_change(PT_Node* node, int leaf_i, int64_t delta, int64_t s
         node->sum += sum_delta;
         node = node->parent;
     } while (node);
-}
-
-static int pt_find_node_in_parent(PT_Node* n) {
-    PT_Node* parent = n->parent;
-    PT_Node** kids = (PT_Node**) (parent + 1);
-    for (int i = 0; i < parent->count + 1; i++) {
-        if (kids[i] == n) { return i; }
-    }
-    return -1;
 }
 
 static void pt_rebalance(PT_Table* table, PT_Node* n, PT_Cursor* c) {

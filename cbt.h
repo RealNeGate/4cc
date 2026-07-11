@@ -71,6 +71,7 @@ extern "C" {
     PT_Cursor pt_lookup(PT_Table* table, uint64_t k);
     PT_Val* pt_get_val(PT_Cursor c);
     bool pt_next_cursor(PT_Cursor* it);
+    bool pt_prev_cursor(PT_Cursor* it);
 
     // Removes entry at the cursor, doesn't touch c->key
     // but it does advance the cursor to the next entry

@@ -229,6 +229,8 @@ buffer_read_range(Application_Links *app, Buffer_ID buffer_id, Range_i64 range, 
     if (api_check_buffer(file)){
         i64 size = buffer_size(&file->state.buffer);
         if (0 <= range.min && range.min <= range.max && range.max <= size){
+            // printf("READ(%ld, %ld, %ld)\n", buffer_id, range.min, range.max);
+
             Scratch_Block scratch(app);
             String_Const_u8 string = buffer_stringify(scratch, &file->state.buffer, range);
             block_copy(out, string.str, string.size);
@@ -338,54 +340,64 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
     Editing_File *file = imp_get_file(models, buffer);
     String_Match result = {};
     if (api_check_buffer(file)){
-        assert(0);
+        printf("seek(%zu, %d)\n", start_pos, direction);
 
-        #if 0
-        Scratch_Block scratch(app);
-        PieceTable *gap_buffer = &file->state.buffer;
-        List_String_Const_u8 chunks_list = buffer_get_chunks(scratch, gap_buffer);
+        // skip initial char
+        start_pos += direction;
+        if (start_pos < 0) {
+            return(result);
+        }
 
-        if (chunks_list.node_count > 0){
-            // TODO(allen): If you are reading this comment, then I haven't revisited this to tighten it up yet.
-            // buffer_seek_character_class was originally implemented using the chunk indexer helper
-            // Buffer_Chunk_Position, and it was written when buffer chunks were in an array instead
-            // of the new method of listing strings in a linked list.
-            //   This should probably be implemented as a direct iteration-in-an-iteration that avoids the
-            // extra function calls and branches to achieve the iteration.  However, this is a very easy API to
-            // get wrong.  There are _a lot_ of opportunities for off by one errors and necessary code duplication,
-            // really tedious stuff.  Anyway, this is all just to say, cleaning this up would be really nice, but
-            // there are almost certainly lower hanging fruit with higher payoffs elsewhere... unless need to change
-            // this anyway or whatever.
-            String_Const_u8 chunk_mem[3] = {};
-            String_Const_u8_Array chunks = {chunk_mem};
-            for (Node_String_Const_u8 *node = chunks_list.first;
-                node != 0;
-                node = node->next){
-                chunks.vals[chunks.count] = node->string;
-                chunks.count += 1;
+        PieceTable *pt = &file->state.buffer;
+        i64 size = pt_total_size(pt);
+        start_pos = clamp(0, start_pos, size);
+
+        PT_Cursor cur = pt_lookup(&pt->piece_tables, start_pos);
+        if (direction == 1) {
+            i64 pos = cur.key, clip = start_pos - cur.key;
+            while (cur.node != NULL) {
+                PT_Val* piece = pt_get_val(cur);
+                const char* src = piece->added ? pt->added_buffer : pt->og_buffer;
+
+                // printf("NODE %p:%d %zu %zu (%zu)\n", cur.node, cur.index, pos, clip, piece->length);
+                // printf("  BUF '%.*s'\n", (int) (piece->length - clip), src + clip);
+
+                for (size_t i = clip; i < piece->length; i++) {
+                    // printf("  PEEK '%c' %d\n", src[i], src[i]);
+                    if (character_predicate_check_character(*predicate, src[i])){
+                        // printf("  GOT %zu\n", pos + i);
+                        result.buffer = buffer;
+                        result.range  = Ii64(pos + i, pos + i + 1);
+                        break;
+                    }
+                }
+                pt_next_cursor(&cur);
+                pos += piece->length, clip = 0;
             }
+        } else if (direction == -1) {
+            PT_Val* piece = pt_get_val(cur);
+            i64 pos  = cur.key + piece->length;
+            i64 clip = start_pos - cur.key;
 
-            i64 size = buffer_size(gap_buffer);
-            start_pos = clamp(-1, start_pos, size);
-            Buffer_Chunk_Position pos = buffer_get_chunk_position(chunks, size, start_pos);
-            for (;;){
-                i32 past_end = buffer_chunk_position_iterate(chunks, &pos, direction);
-                if (past_end == -1){
-                    break;
+            // printf("WOAH! %ld %ld %ld\n", start_pos, pos, clip);
+            while (cur.node != NULL) {
+                PT_Val* piece = pt_get_val(cur);
+                pos -= piece->length;
+
+                // printf("NODE %p:%d %zu %zu (%zu)\n", cur.node, cur.index, pos, clip, piece->length);
+                const char* src = piece->added ? pt->added_buffer : pt->og_buffer;
+                for (size_t i = clip; i--;) {
+                    // printf("  PEEK '%c' %d (%zu)\n", src[i], src[i], i);
+                    if (character_predicate_check_character(*predicate, src[i])){
+                        // printf("  GOT %zu\n", pos + i);
+                        result.buffer = buffer;
+                        result.range  = Ii64(pos + i, pos + i + 1);
+                        break;
+                    }
                 }
-                else if (past_end == 1){
-                    result.range = Ii64(size);
-                    break;
-                }
-                u8 v = chunks.vals[pos.chunk_index].str[pos.chunk_pos];
-                if (character_predicate_check_character(*predicate, v)){
-                    result.buffer = buffer;
-                    result.range = Ii64(pos.real_pos, pos.real_pos + 1);
-                    break;
-                }
+                pt_prev_cursor(&cur), clip = 0;
             }
         }
-        #endif
     }
     return(result);
 }
