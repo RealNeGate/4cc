@@ -261,6 +261,7 @@ PT_Cursor pt_lookup(PT_Table* table, uint64_t k) {
 }
 
 static int pt_find_node_in_parent(PT_Node* n) {
+    assert(n);
     PT_Node* parent = n->parent;
     PT_Node** kids = (PT_Node**) (parent + 1);
     for (int i = 0; i < parent->count + 1; i++) {
@@ -866,7 +867,7 @@ void pt_replace_range(PieceTable* pt, uint64_t start, uint64_t end, size_t lengt
         }
         
         // Remove lines within the range
-        while (left.key < end) {
+        while (left.key <= end) {
             PT_Val* piece = pt_get_val(left);
             assert(left.key >= start);
             // tally up all the space we're deleteing because

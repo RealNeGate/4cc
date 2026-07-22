@@ -7,9 +7,7 @@
  * Updated linux layer for 4coder
  *
  */
-
 global char *lnx_override_user_directory = 0;
-
 internal String_Const_u8
 system_get_path(Arena* arena, System_Path_Code path_code){
     String_Const_u8 result = {};
@@ -45,8 +43,7 @@ system_get_path(Arena* arena, System_Path_Code path_code){
             result = string_remove_last_folder(SCu8(buf, n));
         } break;
 
-        case SystemPath_UserDirectory:
-        {
+        case SystemPath_UserDirectory: {
             if (lnx_override_user_directory == 0){
                 char *home_cstr = getenv("HOME");
                 if (home_cstr != 0){
@@ -61,7 +58,6 @@ system_get_path(Arena* arena, System_Path_Code path_code){
 
     return(result);
 }
-
 internal String_Const_u8
 system_get_canonical(Arena* arena, String_Const_u8 name){
 
@@ -107,16 +103,15 @@ system_get_canonical(Arena* arena, String_Const_u8 name){
         }
     }
 
-    #ifdef INSO_DEBUG
+#ifdef INSO_DEBUG
     if(name.size != q - output) {
         LINUX_FN_DEBUG("[%.*s] -> [%.*s]", (int)name.size, name.str, (int)(q - output), output);
     }
-    #endif
+#endif
 
     // TODO: use realpath at this point to resolve symlinks?
     return SCu8(output, q - output);
 }
-
 internal File_List
 system_get_file_list(Arena* arena, String_Const_u8 directory){
     //LINUX_FN_DEBUG("%.*s", (int)directory.size, directory.str);
@@ -163,8 +158,8 @@ system_get_file_list(Arena* arena, String_Const_u8 directory){
         result.infos = fip = push_array(arena, File_Info*, result.count);
 
         for(File_Info* f = head;
-            f != 0;
-            f = f->next) {
+                f != 0;
+                f = f->next) {
             *fip++ = f;
         }
 
@@ -178,7 +173,6 @@ system_get_file_list(Arena* arena, String_Const_u8 directory){
 
     return result;
 }
-
 internal File_Attributes
 system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name){
     //LINUX_FN_DEBUG("%.*s", (int)file_name.size, file_name.str);
@@ -191,7 +185,6 @@ system_quick_file_attributes(Arena* scratch, String_Const_u8 file_name){
     }
     return(result);
 }
-
 internal b32
 system_load_handle(Arena* scratch, char* file_name, Plat_Handle* out){
     LINUX_FN_DEBUG("%s", file_name);
@@ -202,7 +195,6 @@ system_load_handle(Arena* scratch, char* file_name, Plat_Handle* out){
     }
     return false;
 }
-
 internal File_Attributes
 system_load_attributes(Plat_Handle handle){
     LINUX_FN_DEBUG();
@@ -213,7 +205,6 @@ system_load_attributes(Plat_Handle handle){
     }
     return(result);
 }
-
 internal b32
 system_load_file(Plat_Handle handle, char* buffer, u32 size){
     LINUX_FN_DEBUG("%.*s", size, buffer);
@@ -224,14 +215,12 @@ system_load_file(Plat_Handle handle, char* buffer, u32 size){
     }
     return false;
 }
-
 internal b32
 system_load_close(Plat_Handle handle){
     LINUX_FN_DEBUG();
     int fd = *(int*)&handle;
     return close(fd) == 0;
 }
-
 internal File_Attributes
 system_save_file(Arena* scratch, char* file_name, String_Const_u8 data){
     LINUX_FN_DEBUG("%s", file_name);
@@ -257,7 +246,6 @@ system_save_file(Arena* scratch, char* file_name, String_Const_u8 data){
 
     return result;
 }
-
 internal b32
 system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* out){
     LINUX_FN_DEBUG("%.*s", (int)file_name.size, file_name.str);
@@ -268,19 +256,16 @@ system_load_library(Arena* scratch, String_Const_u8 file_name, System_Library* o
     }
     return false;
 }
-
 internal b32
 system_release_library(System_Library handle){
     LINUX_FN_DEBUG();
     return dlclose(*(void**)&handle) == 0;
 }
-
 internal Void_Func*
 system_get_proc(System_Library handle, char* proc_name){
     LINUX_FN_DEBUG("%s", proc_name);
     return (Void_Func*)dlsym(*(void**)&handle, proc_name);
 }
-
 internal u64
 system_now_time(void){
     //LINUX_FN_DEBUG();
@@ -288,7 +273,6 @@ system_now_time(void){
     clock_gettime(CLOCK_MONOTONIC, &time);
     return linux_us_from_timespec(time);
 }
-
 function void
 linux_date_time_from_tm(Date_Time *out, struct tm *in){
     out->year = in->tm_year + 1900;
@@ -299,7 +283,6 @@ linux_date_time_from_tm(Date_Time *out, struct tm *in){
     out->sec = in->tm_sec;
     out->msec = 0;
 }
-
 function void
 linux_tm_from_date_time(struct tm *out, Date_Time *in){
     out->tm_year = in->year - 1900;
@@ -309,7 +292,6 @@ linux_tm_from_date_time(struct tm *out, Date_Time *in){
     out->tm_min = in->min;
     out->tm_sec = in->sec;
 }
-
 function
 system_now_date_time_universal_sig(){
     time_t now_time = time(0);
@@ -318,7 +300,6 @@ system_now_date_time_universal_sig(){
     linux_date_time_from_tm(&result, now_tm);
     return(result);
 }
-
 function
 system_local_date_time_from_universal_sig(){
     struct tm univ_tm = {};
@@ -329,7 +310,6 @@ system_local_date_time_from_universal_sig(){
     linux_date_time_from_tm(&result, local_tm);
     return(result);
 }
-
 function
 system_universal_date_time_from_local_sig(){
     struct tm local_tm = {};
@@ -340,7 +320,6 @@ system_universal_date_time_from_local_sig(){
     linux_date_time_from_tm(&result, utc_tm);
     return(result);
 }
-
 internal Plat_Handle
 system_wake_up_timer_create(void){
     LINUX_FN_DEBUG();
@@ -352,7 +331,6 @@ system_wake_up_timer_create(void){
     object->timer.epoll_tag = EPOLL_USER_TIMER;
     return object_to_handle(object);
 }
-
 internal void
 system_wake_up_timer_release(Plat_Handle handle){
     LINUX_FN_DEBUG();
@@ -365,7 +343,6 @@ system_wake_up_timer_release(Plat_Handle handle){
         linux_free_object(object);
     }
 }
-
 internal void
 system_wake_up_timer_set(Plat_Handle handle, u32 time_milliseconds){
     //LINUX_FN_DEBUG("%u", time_milliseconds);
@@ -388,13 +365,11 @@ system_wake_up_timer_set(Plat_Handle handle, u32 time_milliseconds){
     }
 
 }
-
 internal void
 system_signal_step(u32 code){
     LINUX_FN_DEBUG("%d", code);
     // linux_schedule_step();
 }
-
 internal void
 system_sleep(u64 microseconds){
     //LINUX_FN_DEBUG("%" PRIu64, microseconds);
@@ -405,7 +380,6 @@ system_sleep(u64 microseconds){
     requested.tv_nsec = (microseconds - seconds * Million(1)) * Thousand(1);
     nanosleep(&requested, &remaining);
 }
-
 internal b32
 system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out){
     LINUX_FN_DEBUG("%s / %s", path, script);
@@ -456,13 +430,11 @@ system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out){
 
     return(true);
 }
-
 internal void
 system_cli_begin_update(CLI_Handles* cli){
     // NOTE(inso): I don't think anything needs to be done here.
     //LINUX_FN_DEBUG();
 }
-
 internal b32
 system_cli_update_step(CLI_Handles* cli, char* dest, u32 max, u32* amount){
     LINUX_FN_DEBUG();
@@ -493,7 +465,6 @@ system_cli_update_step(CLI_Handles* cli, char* dest, u32 max, u32* amount){
     *amount = (ptr - dest);
     return((ptr - dest) > 0);
 }
-
 internal b32
 system_cli_end_update(CLI_Handles* cli){
     LINUX_FN_DEBUG();
@@ -511,13 +482,11 @@ system_cli_end_update(CLI_Handles* cli){
 
     return(close_me);
 }
-
 internal void
 system_open_color_picker(Color_Picker* picker){
     // TODO?
     LINUX_FN_DEBUG();
 }
-
 internal f32
 system_get_screen_scale_factor(void){
     LINUX_FN_DEBUG();
@@ -535,7 +504,6 @@ system_get_screen_scale_factor(void){
     }
     return dpi / 96.0f;
 }
-
 internal System_Thread
 system_thread_launch(Thread_Function* proc, void* ptr){
     LINUX_FN_DEBUG();
@@ -548,10 +516,10 @@ system_thread_launch(Thread_Function* proc, void* ptr){
     pthread_attr_t thread_attr;
     pthread_attr_init(&thread_attr);
     int create_result = pthread_create(
-        &thread_info->thread.pthread,
-        &thread_attr,
-        linux_thread_proc_start,
-        thread_info);
+            &thread_info->thread.pthread,
+            &thread_attr,
+            linux_thread_proc_start,
+            thread_info);
 
     pthread_attr_destroy(&thread_attr);
 
@@ -564,7 +532,6 @@ system_thread_launch(Thread_Function* proc, void* ptr){
 
     return result;
 }
-
 internal void
 system_thread_join(System_Thread thread){
     LINUX_FN_DEBUG();
@@ -572,7 +539,6 @@ system_thread_join(System_Thread thread){
     void* retval_ignored;
     int result = pthread_join(object->thread.pthread, &retval_ignored);
 }
-
 internal void
 system_thread_free(System_Thread thread){
     LINUX_FN_DEBUG();
@@ -580,32 +546,28 @@ system_thread_free(System_Thread thread){
     Assert(object->kind == LinuxObjectKind_Thread);
     linux_free_object(object);
 }
-
 internal i32
 system_thread_get_id(void){
     pid_t id = syscall(__NR_gettid);
     //LINUX_FN_DEBUG("%d", id);
     return id;
 }
-
 internal void
 system_acquire_global_frame_mutex(Thread_Context* tctx){
     //LINUX_FN_DEBUG();
     if (tctx->kind == ThreadKind_AsyncTasks ||
-        tctx->kind == ThreadKind_Main){
+            tctx->kind == ThreadKind_Main){
         system_mutex_acquire(linuxvars.global_frame_mutex);
     }
 }
-
 internal void
 system_release_global_frame_mutex(Thread_Context* tctx){
     //LINUX_FN_DEBUG();
     if (tctx->kind == ThreadKind_AsyncTasks ||
-        tctx->kind == ThreadKind_Main){
+            tctx->kind == ThreadKind_Main){
         system_mutex_release(linuxvars.global_frame_mutex);
     }
 }
-
 internal System_Mutex
 system_mutex_make(void){
     System_Mutex result = {};
@@ -618,7 +580,6 @@ system_mutex_make(void){
     //LINUX_FN_DEBUG("%p", object);
     return result;
 }
-
 internal void
 system_mutex_acquire(System_Mutex mutex){
     Linux_Object* object = *(Linux_Object**)&mutex;
@@ -626,7 +587,6 @@ system_mutex_acquire(System_Mutex mutex){
     Assert(object->kind == LinuxObjectKind_Mutex);
     pthread_mutex_lock(&object->mutex);
 }
-
 internal void
 system_mutex_release(System_Mutex mutex){
     Linux_Object* object = *(Linux_Object**)&mutex;
@@ -634,7 +594,6 @@ system_mutex_release(System_Mutex mutex){
     Assert(object->kind == LinuxObjectKind_Mutex);
     pthread_mutex_unlock(&object->mutex);
 }
-
 internal void
 system_mutex_free(System_Mutex mutex){
     Linux_Object* object = *(Linux_Object**)&mutex;
@@ -643,7 +602,6 @@ system_mutex_free(System_Mutex mutex){
     pthread_mutex_destroy(&object->mutex);
     linux_free_object(object);
 }
-
 internal System_Condition_Variable
 system_condition_variable_make(void){
     System_Condition_Variable result = {};
@@ -653,7 +611,6 @@ system_condition_variable_make(void){
     *(Linux_Object**)&result = object;
     return result;
 }
-
 internal void
 system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex){
     Linux_Object* cv_object = *(Linux_Object**)&cv;
@@ -663,7 +620,6 @@ system_condition_variable_wait(System_Condition_Variable cv, System_Mutex mutex)
     Assert(mutex_object->kind == LinuxObjectKind_Mutex);
     pthread_cond_wait(&cv_object->condition_variable, &mutex_object->mutex);
 }
-
 internal void
 system_condition_variable_signal(System_Condition_Variable cv){
     Linux_Object* object = *(Linux_Object**)&cv;
@@ -671,7 +627,6 @@ system_condition_variable_signal(System_Condition_Variable cv){
     Assert(object->kind == LinuxObjectKind_ConditionVariable);
     pthread_cond_signal(&object->condition_variable);
 }
-
 internal void
 system_condition_variable_free(System_Condition_Variable cv){
     Linux_Object* object = *(Linux_Object**)&cv;
@@ -680,9 +635,7 @@ system_condition_variable_free(System_Condition_Variable cv){
     pthread_cond_destroy(&object->condition_variable);
     linux_free_object(object);
 }
-
 #define MEMORY_PREFIX_SIZE 64
-
 internal void*
 system_memory_allocate(u64 size, String_Const_u8 location){
 
@@ -712,7 +665,6 @@ system_memory_allocate(u64 size, String_Const_u8 location){
 
     return (u8*)result + MEMORY_PREFIX_SIZE;
 }
-
 internal b32
 system_memory_set_protection(void* ptr, u64 size, u32 flags){
     LINUX_FN_DEBUG("%p / %ld / %d", ptr, size, flags);
@@ -723,7 +675,6 @@ system_memory_set_protection(void* ptr, u64 size, u32 flags){
     int result = mprotect(ptr, size, protect);
     return result == 0;
 }
-
 internal void
 system_memory_free(void* ptr, u64 size){
     u64 adjusted_size = size + MEMORY_PREFIX_SIZE;
@@ -738,7 +689,6 @@ system_memory_free(void* ptr, u64 size){
         perror("munmap");
     }
 }
-
 internal Memory_Annotation
 system_memory_annotation(Arena* arena){
     LINUX_FN_DEBUG();
@@ -764,7 +714,6 @@ system_memory_annotation(Arena* arena){
 
     return result;
 }
-
 internal void
 system_show_mouse_cursor(i32 show){
     LINUX_FN_DEBUG("%d", show);
@@ -772,17 +721,15 @@ system_show_mouse_cursor(i32 show){
     linuxvars.cursor_show = show;
 
     XDefineCursor(
-        linuxvars.dpy,
-        linuxvars.win,
-        show ? None : linuxvars.hidden_cursor);
+            linuxvars.dpy,
+            linuxvars.win,
+            show ? None : linuxvars.hidden_cursor);
 }
-
 internal b32
 system_set_fullscreen(b32 full_screen){
     linux_window_fullscreen(full_screen ? WM_STATE_ADD : WM_STATE_DEL);
     return true;
 }
-
 internal b32
 system_is_fullscreen(void){
     b32 result = 0;
@@ -795,11 +742,11 @@ system_is_fullscreen(void){
     unsigned long nitems, pad;
     int fmt;
     int ret = XGetWindowProperty(linuxvars.dpy,
-        linuxvars.win,
-        linuxvars.atom__NET_WM_STATE,
-        0, 32, False, XA_ATOM,
-        &type, &fmt, &nitems, &pad,
-        (unsigned char**)&prop);
+            linuxvars.win,
+            linuxvars.atom__NET_WM_STATE,
+            0, 32, False, XA_ATOM,
+            &type, &fmt, &nitems, &pad,
+            (unsigned char**)&prop);
 
     if(ret == Success && prop){
         result = *prop == linuxvars.atom__NET_WM_STATE_FULLSCREEN;
@@ -808,18 +755,15 @@ system_is_fullscreen(void){
 
     return result;
 }
-
 internal Input_Modifier_Set
 system_get_keyboard_modifiers(Arena* arena){
     //LINUX_FN_DEBUG();
     return(copy_modifier_set(arena, &linuxvars.input.pers.modifiers));
 }
-
 function
 system_set_key_mode_sig(){
     linuxvars.key_mode = mode;
 }
-
 internal void
 system_set_source_mixer(void* ctx, Audio_Mix_Sources_Function* mix_func){
     pthread_mutex_lock(&linuxvars.audio_mutex);
@@ -827,13 +771,11 @@ system_set_source_mixer(void* ctx, Audio_Mix_Sources_Function* mix_func){
     linuxvars.audio_src_func = mix_func;
     pthread_mutex_unlock(&linuxvars.audio_mutex);
 }
-
 internal void
 system_set_destination_mixer(Audio_Mix_Destination_Function* mix_func){
     pthread_mutex_lock(&linuxvars.audio_mutex);
     linuxvars.audio_dst_func = mix_func;
     pthread_mutex_unlock(&linuxvars.audio_mutex);
 }
-
 // NOTE(inso): to prevent me continuously messing up indentation
 // vim: et:ts=4:sts=4:sw=4
