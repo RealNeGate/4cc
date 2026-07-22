@@ -72,6 +72,7 @@ extern "C" {
     PT_Val* pt_get_val(PT_Cursor c);
     bool pt_next_cursor(PT_Cursor* it);
     bool pt_prev_cursor(PT_Cursor* it);
+    void pt_dump(PT_Node* n, uint64_t base, int depth);
 
     // Removes entry at the cursor, doesn't touch c->key
     // but it does advance the cursor to the next entry

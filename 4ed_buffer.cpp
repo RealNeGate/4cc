@@ -1,11 +1,11 @@
 /*
- * Mr. 4th Dimention - Allen Webster
- *
- * 06.01.2017
- *
- * The 4coder base buffer data structure.
- *
- */
+* Mr. 4th Dimention - Allen Webster
+*
+* 06.01.2017
+*
+* The 4coder base buffer data structure.
+*
+*/
 
 // TOP
 
@@ -69,12 +69,12 @@ buffer_unsort_cursors(Cursor_With_Index *positions, i32 count){
 
 internal void
 buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i32 count,
-    Batch_Edit *batch){
+                             Batch_Edit *batch){
     Cursor_With_Index *pos = sorted_positions;
     Cursor_With_Index *end_pos = sorted_positions + count;
     i64 shift_amount = 0;
     for (; batch != 0 && pos < end_pos;
-        batch = batch->next){
+         batch = batch->next){
         Range_i64 range = batch->edit.range;
         i64 len = batch->edit.text.size;
         if (shift_amount != 0){
@@ -100,12 +100,12 @@ buffer_update_cursors_lean_l(Cursor_With_Index *sorted_positions, i32 count,
 
 internal void
 buffer_update_cursors_lean_r(Cursor_With_Index *sorted_positions, i32 count,
-    Batch_Edit *batch){
+                             Batch_Edit *batch){
     Cursor_With_Index *pos = sorted_positions;
     Cursor_With_Index *end_pos = sorted_positions + count;
     i64 shift_amount = 0;
     for (; batch != 0 && pos < end_pos;
-        batch = batch->next){
+         batch = batch->next){
         Range_i64 range = batch->edit.range;
         i64 len = batch->edit.text.size;
         if (shift_amount != 0){
@@ -144,10 +144,10 @@ buffer_line_count(PieceTable *buffer){
 internal void
 buffer_init(PieceTable *buffer, u8 *data, u64 size, Base_Allocator *allocator){
     block_zero_struct(buffer);
-
+    
     #if 0
     buffer->allocator = allocator;
-
+    
     u64 capacity = round_up_u64(size*2, KB(4));
     String_Const_u8 memory = base_allocate(allocator, capacity);
     buffer->data = (u8*)memory.str;
@@ -155,11 +155,11 @@ buffer_init(PieceTable *buffer, u8 *data, u64 size, Base_Allocator *allocator){
     buffer->gap_size = capacity - size;
     buffer->size2 = size - buffer->size1;
     buffer->max = capacity;
-
+    
     block_copy(buffer->data, data, buffer->size1);
     block_copy(buffer->data + buffer->size1 + buffer->gap_size, data + buffer->size1, buffer->size2);
     #endif
-
+    
     String_Const_u8 memory = base_allocate(allocator, size);
     block_copy(memory.str, data, size);
     pt_alloc2(buffer, size, (const char*) memory.str);
@@ -178,8 +178,8 @@ buffer_chunks_clamp(List_String_Const_u8 *chunks, Range_i64 range){
     i64 p = 0;
     List_String_Const_u8 list = {};
     for (Node_String_Const_u8 *node = chunks->first, *next = 0;
-        node != 0;
-        node = next){
+         node != 0;
+         node = next){
         next = node->next;
         Range_i64 node_range = Ii64(p, p + node->string.size);
         if (range_overlap(range, node_range)){
@@ -209,14 +209,14 @@ buffer_get_line_index(PieceTable *buffer, i64 pos){
     if (pos == 0) {
         return 0;
     }
-
-    PT_Cursor left = pt_lookup(&buffer->line_starts, pos - 1);
+    
+    PT_Cursor left = pt_lookup(&buffer->line_starts, pos);
     return left.node ? pt_get_absolute_index(left.node, left.index) : 0;
 }
 
 Line_Move*
 push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
-    i64 old_line_first, i64 old_line_opl, i64 text_shift){
+               i64 old_line_first, i64 old_line_opl, i64 text_shift){
     Line_Move *move = push_array(arena, Line_Move, 1);
     move->next = moves;
     move->kind = LineMove_ShiftOldValues;
@@ -229,7 +229,7 @@ push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
 
 Line_Move*
 push_line_move(Arena *arena, Line_Move *moves, i64 new_line_first,
-    String_Const_u8 string, i64 text_base){
+               String_Const_u8 string, i64 text_base){
     Line_Move *move = push_array(arena, Line_Move, 1);
     move->next = moves;
     move->kind = LineMove_MeasureString;
@@ -247,10 +247,10 @@ buffer_get_pos_range_from_line_number(PieceTable *buffer, i64 line_number){
     Range_i64 result = {};
     if (1 <= line_number && line_number <= buffer_line_count(buffer)){
         PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_number - 1);
-        result.first = line_number > 1 ? left.key + 1 : 0;
-        result.one_past_last = left.key + pt_get_val(left)->length + 1;
+        result.first = line_number > 1 ? left.key : 0;
+        result.one_past_last = left.key + pt_get_val(left)->length;
         result.one_past_last = clamp_top(result.one_past_last, buffer_size(buffer));
-
+        
         // printf("R %lu => %lu %lu %lu\n", line_number, result.first, result.one_past_last, pt_get_val(left)->length);
         // Buffer_Cursor r = buffer_cursor_from_pos(buffer, result.first);
         // printf("  %lu %lu\n", r.line, r.col);
@@ -272,6 +272,7 @@ buffer_get_first_pos_from_line_number(PieceTable *buffer, i64 line_number){
         assert(left.node);
         result = left.key;
     }
+    // printf("FRST %ld %ld\n", line_number, result);
     return(result);
 }
 
@@ -287,7 +288,7 @@ buffer_get_last_pos_from_line_number(PieceTable *buffer, i64 line_number){
     else{
         PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_number);
         assert(left.node);
-        result = left.key;
+        result = left.key - 1;
     }
     return(result);
 }
@@ -296,14 +297,14 @@ internal Buffer_Cursor
 buffer_cursor_from_pos(PieceTable *buffer, i64 pos){
     i64 size = buffer_size(buffer);
     pos = clamp(0, pos, size);
-
-    PT_Cursor left = pt_lookup(&buffer->line_starts, pos ? pos - 1 : 0);
+    
+    PT_Cursor left = pt_lookup(&buffer->line_starts, pos);
     i64 line_index = left.node ? pt_get_absolute_index(left.node, left.index) : 0;
-
+    
     Buffer_Cursor result = {};
     result.pos  = pos;
     result.line = line_index + 1;
-    result.col  = (pos - (left.key ? left.key + 1 : 0)) + 1;
+    result.col  = (pos - left.key) + 1;
     return(result);
 }
 
@@ -313,15 +314,15 @@ buffer_cursor_from_line_col(PieceTable *buffer, i64 line, i64 col){
     i64 line_index = line - 1;
     i64 line_count = buffer_line_count(buffer);
     line_index = clamp(0, line_index, line_count - 1);
-
+    
     PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_index);
-    i64 this_start = left.key ? left.key + 1 : 0;
-    i64 max_col    = pt_get_val(left)->length - !!left.key;
+    i64 this_start = left.key;
+    i64 max_col    = pt_get_val(left)->length;
     if (line_index + 1 == line_count){
         max_col += 1;
     }
     max_col = clamp_bot(1, max_col);
-
+    
     if (col < 0){
         if (-col > max_col){
             col = 1;
@@ -338,9 +339,9 @@ buffer_cursor_from_line_col(PieceTable *buffer, i64 line, i64 col){
     }
     Assert(col > 0);
     i64 adjusted_pos = col - 1;
-
+    
     i64 pos = this_start + adjusted_pos;
-
+    
     Buffer_Cursor result = {};
     result.pos = pos;
     result.line = line_index + 1;

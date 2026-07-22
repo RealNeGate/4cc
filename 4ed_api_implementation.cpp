@@ -292,13 +292,14 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
     Editing_File *file = imp_get_file(models, buffer);
     String_Match result = {};
     if (api_check_buffer(file)){
-        assert(0);
-        #if 0
         if (needle.size == 0){
             result.flags = StringMatch_CaseSensitive;
             result.range = Ii64(start_pos);
         }
         else{
+            assert(0);
+
+            #if 0
             Scratch_Block scratch(app);
             PieceTable *gap_buffer = &file->state.buffer;
             i64 size = buffer_size(gap_buffer);
@@ -328,8 +329,8 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
             else{
                 result.range = Ii64(start_pos);
             }
+            #endif
         }
-        #endif
     }
     return(result);
 }
@@ -343,12 +344,17 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
         printf("seek(%zu, %d)\n", start_pos, direction);
 
         // skip initial char
-        start_pos += direction;
+        if (direction > 0) {
+            start_pos++;
+        }
+
         if (start_pos < 0) {
             return(result);
         }
 
         PieceTable *pt = &file->state.buffer;
+        pt_dump(pt->piece_tables.root, 0, 0);
+
         i64 size = pt_total_size(pt);
         start_pos = clamp(0, start_pos, size);
 
@@ -357,18 +363,20 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
             i64 pos = cur.key, clip = start_pos - cur.key;
             while (cur.node != NULL) {
                 PT_Val* piece = pt_get_val(cur);
-                const char* src = piece->added ? pt->added_buffer : pt->og_buffer;
+                const char* src = (piece->added ? pt->added_buffer : pt->og_buffer) + piece->offset;
 
-                // printf("NODE %p:%d %zu %zu (%zu)\n", cur.node, cur.index, pos, clip, piece->length);
-                // printf("  BUF '%.*s'\n", (int) (piece->length - clip), src + clip);
+                /* printf("NODE %p:%d %zu %zu (%zu)\n", cur.node, cur.index, pos, clip, piece->length);
+                for (size_t i = clip; i < piece->length; i++) {
+                    printf("  PEEK '%c' %d\n", src[i] < 32 ? '.' : src[i], src[i]);
+                } */
 
                 for (size_t i = clip; i < piece->length; i++) {
-                    // printf("  PEEK '%c' %d\n", src[i], src[i]);
+                    // printf("  SCAN '%c' %d\n", src[i] < 32 ? '.' : src[i], src[i]);
                     if (character_predicate_check_character(*predicate, src[i])){
                         // printf("  GOT %zu\n", pos + i);
                         result.buffer = buffer;
                         result.range  = Ii64(pos + i, pos + i + 1);
-                        break;
+                        goto done;
                     }
                 }
                 pt_next_cursor(&cur);
@@ -377,7 +385,7 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
         } else if (direction == -1) {
             PT_Val* piece = pt_get_val(cur);
             i64 pos  = cur.key + piece->length;
-            i64 clip = start_pos - cur.key;
+            i64 clip = pos - (start_pos + 1);
 
             // printf("WOAH! %ld %ld %ld\n", start_pos, pos, clip);
             while (cur.node != NULL) {
@@ -385,20 +393,21 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
                 pos -= piece->length;
 
                 // printf("NODE %p:%d %zu %zu (%zu)\n", cur.node, cur.index, pos, clip, piece->length);
-                const char* src = piece->added ? pt->added_buffer : pt->og_buffer;
-                for (size_t i = clip; i--;) {
-                    // printf("  PEEK '%c' %d (%zu)\n", src[i], src[i], i);
+                const char* src = (piece->added ? pt->added_buffer : pt->og_buffer) + piece->offset;
+                for (size_t i = piece->length - clip; i--;) {
+                    // printf("  SCAN '%c' %d (%zu)\n", src[i], src[i], i);
                     if (character_predicate_check_character(*predicate, src[i])){
                         // printf("  GOT %zu\n", pos + i);
                         result.buffer = buffer;
                         result.range  = Ii64(pos + i, pos + i + 1);
-                        break;
+                        goto done;
                     }
                 }
                 pt_prev_cursor(&cur), clip = 0;
             }
         }
     }
+    done:;
     return(result);
 }
 
