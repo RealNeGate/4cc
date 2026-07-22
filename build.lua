@@ -6,13 +6,13 @@ function filename(file)
 end
 
 function cc(cc, src, out, cflags)
-	local cmd = cc.." "..src.." -I . -I custom -DFTECH_64_BIT "..cflags.." -o "..out
+	local cmd = cc.." "..src.." -I . -I ../4coder_qol/custom -DFTECH_64_BIT "..cflags.." -o "..out
 
 	print(cmd)
 	return os.execute(cmd)
 end
 
-local cflags = "-g -Wno-null-dereference -rdynamic -fuse-ld=lld -O0 -Wno-write-strings -DUSE_SPALL_AUTO -finstrument-functions"
+local cflags = "-g -Wno-null-dereference -rdynamic -fuse-ld=lld -O1 -Wno-write-strings"
 local libs = ""
 
 cflags = cflags.." -I /home/linuxbrew/.linuxbrew/include/"
@@ -28,5 +28,5 @@ if true then -- GCC
     libs = libs.." -lX11 -lXrandr -lm -lrt -lGL -ldl -lXfixes -lfreetype -fno-threadsafe-statics -pthread -Wno-unused-result"
 end
 
-cc("clang++", "platform_linux/linux_4ed.cpp", "../build/4ed2",        cflags.." "..libs)  -- platform layer
-cc("clang",   "4ed_app_target.cpp  cbt.c",    "../build/4ed_app2.so", cflags.." -shared") -- 4coder main DLL
+cc("clang++", "platform_linux/linux_4ed.cpp", "../test_build/4ed2",        cflags.." "..libs)  -- platform layer
+cc("clang",   "4ed_app_target.cpp  cbt.c",    "../test_build/4ed_app2.so", cflags.." -shared") -- 4coder main DLL
