@@ -14,14 +14,14 @@
 function API_Definition*
 define_api(Arena *arena){
     API_Definition *api = begin_api(arena, "font");
-    
+
     {
         API_Call *call = api_call(arena, api, "make_face", "Face*");
         api_param(arena, call, "Arena*", "arena");
         api_param(arena, call, "Face_Description*", "description");
         api_param(arena, call, "f32", "scale_factor");
     }
-    
+
     return(api);
 }
 

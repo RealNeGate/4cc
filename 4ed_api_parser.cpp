@@ -46,7 +46,8 @@ api_parse__match_identifier(Token_Iterator *it, String_Const_u8 source, String_C
     b32 match = false;
     Token *token = token_it_read(it);
     if (token->kind == TokenBaseKind_Identifier ||
-        token->kind == TokenBaseKind_Keyword){
+        token->kind == TokenBaseKind_Keyword ||
+        token->kind >= TokenBaseKind_COUNT){
         if (token_it_inc(it)){
             *lexeme = string_substring(source, Ii64(token));
             match = true;
@@ -60,7 +61,8 @@ api_parse__match_identifier(Token_Iterator *it, String_Const_u8 source, char *le
     b32 match = false;
     Token *token = token_it_read(it);
     if ((token->kind == TokenBaseKind_Identifier ||
-         token->kind == TokenBaseKind_Keyword) &&
+         token->kind == TokenBaseKind_Keyword ||
+         token->kind >= TokenBaseKind_COUNT) &&
         string_match(SCu8(lexeme), string_substring(source, Ii64(token)))){
         if (token_it_inc(it)){
             match = true;

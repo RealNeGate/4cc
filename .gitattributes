@@ -1,0 +1,8 @@
+* text=lf
+
+*.sh text eol=lf
+*.4coder text eol=lf
+*.c text eol=crlf
+*.cpp text eol=crlf
+*.h text eol=crlf
+

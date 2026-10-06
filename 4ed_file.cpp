@@ -302,7 +302,7 @@ file_get_line_layout(Thread_Context *tctx, Models *models, Editing_File *file,
             app.tctx = tctx;
             app.cmd_context = models;
             *list = layout_func(&app, &file->state.cached_layouts_arena,
-                file->id, line_range, face->id, width);
+                file->id, line_range, face->id, width);            
             key_data = push_data_copy(&file->state.cached_layouts_arena, key_data);
             table_insert(&file->state.line_layout_table, key_data, (u64)PtrAsInt(list));
         }
@@ -406,6 +406,16 @@ file_pos_at_relative_xy(Thread_Context *tctx, Models *models, Editing_File *file
     return layout_nearest_pos_to_xy(face->metrics.line_height, line, relative_xy);
 }
 
+internal f32
+file_relative_x_of_pos(Thread_Context *tctx, Models *models, Editing_File *file,
+    Layout_Function *layout_func, f32 width, Face *face,
+    i64 pos){
+    i64 line_number = buffer_get_line_index(&file->state.buffer, pos) + 1;
+    Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, line_number);
+    Rect_f32 result = layout_box_of_pos(face->metrics.line_height, line, pos);
+    return (result.x0 + result.x1) * 0.5f;
+}
+
 internal Rect_f32
 file_relative_box_of_pos(Thread_Context *tctx, Models *models, Editing_File *file,
     Layout_Function *layout_func, f32 width, Face *face,
@@ -413,11 +423,10 @@ file_relative_box_of_pos(Thread_Context *tctx, Models *models, Editing_File *fil
     i64 line_number = buffer_get_line_index(&file->state.buffer, pos) + 1;
     Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, line_number);
     Rect_f32 result = layout_box_of_pos(face->metrics.line_height, line, pos);
-
+    
     f32 y_difference = file_line_y_difference(tctx, models, file, layout_func, width, face, line_number, base_line);
     result.y0 += y_difference;
     result.y1 += y_difference;
-
     return(result);
 }
 

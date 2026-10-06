@@ -14,11 +14,24 @@
 #include "generated/lexer_cpp.h"
 #include "4ed_api_definition.h"
 
+#include "4coder_table.h"
+#include "4coder_events.h"
+#include "4coder_types.h"
+#include "4coder_system_types.h"
+#include "4coder_table.h"
+
+#define LEX_DISABLE_ASYNC
 #include "4coder_base_types.cpp"
 #include "4coder_stringf.cpp"
 #include "4coder_malloc_allocator.cpp"
 #include "4coder_token.cpp"
+
+#include "4coder_code_index.h"
+#include "../4coder_byp/4coder_qol/languages/qol_parser_helper.h"
+#include "lexer_generator/4coder_lex_gen_hand_written.h"
+#include "lexer_generator/4coder_lex_gen_hand_written.cpp"
 #include "generated/lexer_cpp.cpp"
+
 #include "4coder_file.cpp"
 #include "4ed_api_definition.cpp"
 #include "4ed_api_parser.cpp"

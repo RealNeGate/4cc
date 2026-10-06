@@ -13,7 +13,7 @@ extern "C" {
     #endif
 
     enum {
-        DEGREE   = 84,
+        DEGREE   = 30,
         MAX_KEYS = DEGREE*2,
         MAX_KIDS = DEGREE*2 + 1
     };
@@ -52,7 +52,7 @@ extern "C" {
         uint64_t keys[MAX_KEYS];
 
         // PT_Node* kids[MAX_VALS];
-        // uint64_t vals[MAX_VALS];
+        // uint64_t vals[MAX_KEYS];
     };
 
     typedef struct {

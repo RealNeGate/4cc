@@ -91,6 +91,12 @@
 #define DYNAMIC_LINK_API
 #include "generated/font_api.cpp"
 
+#define LEX_DISABLE_ASYNC
+#include "4coder_code_index.h"
+#include "../4coder_byp/4coder_qol/languages/qol_parser_helper.h"
+#include "lexer_generator/4coder_lex_gen_hand_written.h"
+#include "lexer_generator/4coder_lex_gen_hand_written.cpp"
+
 #include "4coder_token.cpp"
 #include "generated/lexer_cpp.cpp"
 

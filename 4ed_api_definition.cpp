@@ -437,7 +437,7 @@ api_definition_generate_api_includes(Arena *arena, API_Definition *api, Generate
         }break;
         case GeneratedGroup_Custom:
         {
-            root = string_u8_litexpr("custom/generated/");
+            root = string_u8_litexpr("../4coder_qol/custom/generated/");
         }break;
     }
     

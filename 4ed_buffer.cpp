@@ -160,9 +160,13 @@ buffer_init(PieceTable *buffer, u8 *data, u64 size, Base_Allocator *allocator){
     block_copy(buffer->data + buffer->size1 + buffer->gap_size, data + buffer->size1, buffer->size2);
     #endif
     
-    String_Const_u8 memory = base_allocate(allocator, size);
-    block_copy(memory.str, data, size);
-    pt_alloc2(buffer, size, (const char*) memory.str);
+    if (size > 0) {
+        String_Const_u8 memory = base_allocate(allocator, size);
+        block_copy(memory.str, data, size);
+        pt_alloc2(buffer, size, (const char*) memory.str);
+    } else {
+        pt_alloc2(buffer, 0, NULL);
+    }
 }
 
 internal b32
@@ -247,10 +251,11 @@ buffer_get_pos_range_from_line_number(PieceTable *buffer, i64 line_number){
     Range_i64 result = {};
     if (1 <= line_number && line_number <= buffer_line_count(buffer)){
         PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_number - 1);
-        result.first = line_number > 1 ? left.key : 0;
+        result.first         = left.key;
         result.one_past_last = left.key + pt_get_val(left)->length;
-        result.one_past_last = clamp_top(result.one_past_last, buffer_size(buffer));
+        assert(result.one_past_last <= buffer_size(buffer));
         
+        // result.one_past_last = clamp_top(result.one_past_last, buffer_size(buffer));
         // printf("R %lu => %lu %lu %lu\n", line_number, result.first, result.one_past_last, pt_get_val(left)->length);
         // Buffer_Cursor r = buffer_cursor_from_pos(buffer, result.first);
         // printf("  %lu %lu\n", r.line, r.col);
@@ -272,7 +277,6 @@ buffer_get_first_pos_from_line_number(PieceTable *buffer, i64 line_number){
         assert(left.node);
         result = left.key;
     }
-    // printf("FRST %ld %ld\n", line_number, result);
     return(result);
 }
 
@@ -300,6 +304,7 @@ buffer_cursor_from_pos(PieceTable *buffer, i64 pos){
     
     PT_Cursor left = pt_lookup(&buffer->line_starts, pos);
     i64 line_index = left.node ? pt_get_absolute_index(left.node, left.index) : 0;
+    // printf("QUERY %ld %ld %p\n", pos, line_index, buffer->line_starts.root);
     
     Buffer_Cursor result = {};
     result.pos  = pos;
@@ -315,6 +320,7 @@ buffer_cursor_from_line_col(PieceTable *buffer, i64 line, i64 col){
     i64 line_count = buffer_line_count(buffer);
     line_index = clamp(0, line_index, line_count - 1);
     
+    Buffer_Cursor result = {};
     PT_Cursor left = pt_lookup_by_abs_index(&buffer->line_starts, line_index);
     i64 this_start = left.key;
     i64 max_col    = pt_get_val(left)->length;
@@ -342,7 +348,6 @@ buffer_cursor_from_line_col(PieceTable *buffer, i64 line, i64 col){
     
     i64 pos = this_start + adjusted_pos;
     
-    Buffer_Cursor result = {};
     result.pos = pos;
     result.line = line_index + 1;
     result.col = col;

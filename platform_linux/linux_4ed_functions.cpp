@@ -383,19 +383,45 @@ system_sleep(u64 microseconds){
 internal b32
 system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out){
     LINUX_FN_DEBUG("%s / %s", path, script);
-    int pipe_fds[2];
-    if (pipe(pipe_fds) == -1){
+    int pipefd[2];
+    if (pipe(pipefd) == -1){
         perror("system_cli_call: pipe");
         return 0;
     }
+    
+    posix_spawn_file_actions_t file_actions;
+    posix_spawn_file_actions_init(&file_actions);
+    
+    enum { PIPE_FD_READ, PIPE_FD_WRITE };
+    posix_spawn_file_actions_adddup2(&file_actions, pipefd[PIPE_FD_WRITE], STDOUT_FILENO);
+    posix_spawn_file_actions_adddup2(&file_actions, pipefd[PIPE_FD_WRITE], STDERR_FILENO);
+    posix_spawn_file_actions_addchdir_np(&file_actions, path);
+    
+    posix_spawn_file_actions_addclose(&file_actions, pipefd[PIPE_FD_READ]);
+    posix_spawn_file_actions_addclose(&file_actions, pipefd[PIPE_FD_WRITE]);
 
-    pid_t child_pid = vfork();
-    if (child_pid == -1){
-        perror("system_cli_call: fork");
+    char* argv[] = { "sh", "-c", script, NULL };
+    
+    pid_t child_pid;
+    int status = posix_spawn(&child_pid, "/bin/sh", &file_actions, NULL, argv, environ);
+    if (status != 0) {
+        perror("system_cli_call: posix_spawnp");
         return 0;
     }
+    posix_spawn_file_actions_destroy(&file_actions);
+    close(pipefd[PIPE_FD_WRITE]);
 
-    enum { PIPE_FD_READ, PIPE_FD_WRITE };
+    *(pid_t*)&cli_out->proc = child_pid;
+    *(int*)&cli_out->out_read = pipefd[PIPE_FD_READ];
+    *(int*)&cli_out->out_write = pipefd[PIPE_FD_WRITE];
+
+    struct epoll_event e = {};
+    e.events = EPOLLIN | EPOLLET;
+    e.data.ptr = &epoll_tag_cli_pipe;
+    epoll_ctl(linuxvars.epoll, EPOLL_CTL_ADD, pipefd[PIPE_FD_READ], &e);
+    
+    #if 0
+    pid_t child_pid = vfork();
 
     // child
     if (child_pid == 0){
@@ -427,6 +453,7 @@ system_cli_call(Arena* scratch, char* path, char* script, CLI_Handles* cli_out){
         e.data.ptr = &epoll_tag_cli_pipe;
         epoll_ctl(linuxvars.epoll, EPOLL_CTL_ADD, pipe_fds[PIPE_FD_READ], &e);
     }
+    #endif
 
     return(true);
 }

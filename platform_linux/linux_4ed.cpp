@@ -73,6 +73,7 @@
 #include <locale.h>
 #include <errno.h>
 #include <pthread.h>
+#include <spawn.h>
 
 #include <sys/epoll.h>
 #include <sys/mman.h>

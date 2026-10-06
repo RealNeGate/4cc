@@ -129,6 +129,14 @@ void pt_assert_sort(PT_Node* n) {
 static void pt_move_val(PT_Node* n, int dst, PT_Node* n2, int src, int count) {
     assert(n->is_leaf == n2->is_leaf);
     size_t val_size = n->is_leaf ? sizeof(PT_Val) : sizeof(PT_Node*);
+    if (n->is_leaf) {
+        assert(dst+count <= MAX_KEYS);
+        assert(src+count <= MAX_KEYS);
+    } else {
+        assert(dst+count <= MAX_KIDS);
+        assert(src+count <= MAX_KIDS);
+    }
+
     
     char* dst_v = (char*) (n + 1);
     char* src_v = (char*) (n2 + 1);
@@ -617,6 +625,7 @@ PT_Cursor pt_insert(PT_Table* table, uint64_t k, PT_Val v) {
         
         assert(node->count < max_keys);
         assert(left < node->count + 1);
+        assert(left < MAX_KEYS);
         
         node->count += 1;
         node->keys[left] = k;
@@ -705,6 +714,8 @@ bool pt_alloc2(PieceTable* pt, size_t length, const char* data) {
         if (last_line <= pt->og_buffer_size) {
             pt_insert(&pt->line_starts, last_line, (PT_Val){ 0, 0, pt->og_buffer_size - last_line });
         }
+    } else {
+        pt_insert(&pt->line_starts, 0, (PT_Val){ 0, 0, 0 });
     }
     
     return true;
@@ -851,7 +862,8 @@ void pt_replace_range(PieceTable* pt, uint64_t start, uint64_t end, size_t lengt
     ////////////////////////////////
     // Delete line range of [start, end), shifts right down
     ////////////////////////////////
-    if (start != end && pt->line_starts.root != NULL && pt->line_starts.root->count > 0) {
+    if (start != end && pt->line_starts.root != NULL) {
+        assert(pt->line_starts.root->count > 0);
         PT_Cursor left = pt_lookup(&pt->line_starts, start);
         // pt_dump(pt->line_starts.root, 0, 0);
         
@@ -1006,3 +1018,4 @@ uint64_t pt_get_line_count(PieceTable* pt) {
 size_t pt_total_size(PieceTable* pt) {
     return pt->piece_tables.root ? pt->piece_tables.root->length : 0;
 }
+
