@@ -3194,7 +3194,16 @@ buffer_find_all_matches(Application_Links *app, Arena *arena, Buffer_ID buffer,
     Editing_File *file = imp_get_file(models, buffer);
     String_Match_List list = {};
     if (api_check_buffer(file)){
-        assert(0);
+        if (needle.size > 0){
+            Scratch_Block scratch(app, arena);
+            PieceTable *pt = &file->state.buffer;
+            if (direction == Scan_Forward){
+                list = find_all_matches_forward2(arena, max_i32, pt, needle, range.min, buffer, string_id);
+            } else {
+                list = find_all_matches_backward2(arena, max_i32, pt, needle, range.min, buffer, string_id);
+            }
+        }
+
         #if 0
         if (needle.size > 0){
             Scratch_Block scratch(app, arena);

@@ -190,12 +190,12 @@ find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
                           u64 base_index, Buffer_ID buffer, i32 string_id){
     String_Match_List list = {};
     i64 size = pt_total_size(pt);
-    if (base_index > size - needle.size) {
+    if (base_index + needle.size > size) {
         return(list);
     }
 
     // compute delta table
-    uint8_t bad_char[256];
+    int8_t bad_char[256];
     for (size_t i = 0; i < 256; i++) {
         bad_char[i] = -1;
     }
@@ -210,7 +210,7 @@ find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
 
     uint8_t last_char = needle.str[needle.size - 1];
     uint8_t last_char_up = character_to_upper(last_char);
-    
+
     i64 s = base_index, last_insensitive = -1;
     while (s <= limit) {
         // skip until last char is hit
@@ -246,8 +246,9 @@ find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
             }
 
             // cursor is at s+needle-1, we want the character right after
-            ch = character_to_upper(pt_scan_peek_ahead(pt, curr));
-            delta = (s + needle.size < size) ? needle.size - bad_char[ch] : 1;
+            // ch = character_to_upper(pt_scan_peek_ahead(pt, curr));
+            // delta = (s + needle.size < size) ? needle.size - bad_char[ch] : 1;
+            delta = 1;
         } else {
             ch = character_to_upper(ch);
 
@@ -278,14 +279,14 @@ find_all_matches_backward2(Arena *arena, i32 maximum_output_count,
     }
 
     // compute reverse delta table
-    uint8_t bad_char[256];
+    int8_t bad_char[256];
     for (size_t i = 0; i < 256; i++) {
         bad_char[i] = -1;
     }
 
     for (size_t i = needle.size; i--;) {
         char ch = needle.str[i];
-        bad_char[character_to_upper(ch)] = i;
+        bad_char[character_to_upper(ch)] = needle.size - (i + 1);
     }
 
     uint8_t first_char = needle.str[0];
@@ -323,9 +324,7 @@ find_all_matches_backward2(Arena *arena, i32 maximum_output_count,
                 break;
             }
 
-            // cursor is at s+needle-1, we want the character right after
-            ch = character_to_upper(pt_scan_peek_ahead(pt, curr));
-            delta = (s + needle.size < size) ? needle.size - bad_char[ch] : 1;
+            delta = 1;
         } else {
             ch = character_to_upper(ch);
 
@@ -381,289 +380,7 @@ string_compute_prefix_table(Arena *arena, String_Const_u8 string, Scan_Direction
     return(array);
 }
 
-internal u64_Array
-string_compute_needle_jump_table(Arena *arena, u64_Array longest_prefixes){
-    u64_Array array = {};
-    array.count = longest_prefixes.count + 1;
-    array.vals = push_array(arena, u64, array.count);
-    array.vals[0] = 0;
-    for (u64 i = 1; i < array.count; i += 1){
-        array.vals[i] = i - longest_prefixes.vals[i - 1];
-    }
-    return(array);
-}
-
-internal u64_Array
-string_compute_needle_jump_table(Arena *arena, String_Const_u8 needle, Scan_Direction direction){
-    u64_Array prefix_table = string_compute_prefix_table(arena, needle, direction);
-    return(string_compute_needle_jump_table(arena, prefix_table));
-}
-
 #define character_predicate_check_character(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
-
-internal String_Match_List
-find_all_matches_forward(Arena *arena, i32 maximum_output_count,
-                         List_String_Const_u8 chunks, String_Const_u8 needle,
-                         u64_Array jump_table, Character_Predicate *predicate,
-                         u64 base_index, Buffer_ID buffer, i32 string_id){
-    String_Match_List list = {};
-
-    if (chunks.node_count > 0){
-        u64 i = 0;
-        u64 j = 0;
-        b8 current_l = false;
-        i64 last_insensitive = -1;
-        i64 last_boundary = -1;
-
-        Node_String_Const_u8 *node = chunks.first;
-        i64 chunk_pos = 0;
-
-        i32 jump_back_code = 0;
-
-        u8 c = 0;
-        u64 n = 0;
-        u8 needle_c = 0;
-        u64 jump = 0;
-
-        if (false){
-            iterate_forward:
-            i += 1;
-            chunk_pos += 1;
-            if (chunk_pos >= (i64)node->string.size){
-                last_boundary = i;
-                chunk_pos = 0;
-                node = node->next;
-            }
-
-            switch (jump_back_code){
-                case 0:
-                {
-                    goto jump_back_0;
-                }break;
-                case 1:
-                {
-                    goto jump_back_1;
-                }break;
-            }
-        }
-
-        for (;node != 0;){
-            c = node->string.str[chunk_pos];
-            n = i - j;
-            needle_c = needle.str[n];
-            if (character_to_upper(c) == character_to_upper(needle_c)){
-                if (c != needle_c){
-                    last_insensitive = i;
-                }
-
-                jump_back_code = 0;
-                goto iterate_forward;
-                jump_back_0:
-
-                if (n + 1 == needle.size){
-                    String_Match_Flag flags = 0;
-                    if (!(last_insensitive >= 0 &&
-                          j <= (u64)last_insensitive &&
-                          (u64)last_insensitive < j + needle.size)){
-                        AddFlag(flags, StringMatch_CaseSensitive);
-                    }
-                    if (!(last_boundary >= 0 &&
-                          j <= (u64)last_boundary &&
-                          (u64)last_boundary < j + needle.size)){
-                        AddFlag(flags, StringMatch_Straddled);
-                    }
-                    if (node != 0){
-                        u8 next_c = node->string.str[chunk_pos];
-                        if (character_predicate_check_character(*predicate, next_c)){
-                            AddFlag(flags, StringMatch_RightSideSloppy);
-                        }
-                    }
-                    if (current_l){
-                        AddFlag(flags, StringMatch_LeftSideSloppy);
-                    }
-                    string_match_list_push(arena, &list, buffer, string_id, flags,
-                                           base_index + j, needle.size);
-                    if (list.count >= maximum_output_count){
-                        break;
-                    }
-                    jump = jump_table.vals[n + 1];
-                    current_l = character_predicate_check_character(*predicate, needle.str[jump - 1]);
-                    j += jump;
-                }
-
-            }
-            else{
-                jump = jump_table.vals[n];
-                if (jump == 0){
-                    current_l = character_predicate_check_character(*predicate, c);
-
-                    jump_back_code = 1;
-                    goto iterate_forward;
-                    jump_back_1:
-
-                    j += 1;
-                }
-                else{
-                    u8 prev_c = needle.str[jump - 1];
-                    current_l = character_predicate_check_character(*predicate, prev_c);
-                    j += jump;
-                }
-            }
-        }
-    }
-
-    return(list);
-}
-
-internal String_Match_List
-find_all_matches_backward(Arena *arena, i32 maximum_output_count,
-                          List_String_Const_u8 chunks, String_Const_u8 needle,
-                          u64_Array jump_table, Character_Predicate *predicate,
-                          u64 base_index, Buffer_ID buffer, i32 string_id){
-    String_Match_List list = {};
-
-    string_list_reverse(&chunks);
-
-    if (chunks.node_count > 0){
-        i64 size = (i64)chunks.total_size;
-
-        i64 i = size - 1;
-        i64 j = size - 1;
-        b8 current_r = false;
-        i64 last_insensitive = size;
-        i64 last_boundary = size;
-
-        Node_String_Const_u8 *node = chunks.first;
-        i64 chunk_pos = node->string.size - 1;
-
-        i32 jump_back_code = 0;
-
-        u8 c = 0;
-        u64 n = 0;
-        u8 needle_c = 0;
-        u64 jump = 0;
-
-        if (false){
-            iterate_backward:
-            i -= 1;
-            chunk_pos -= 1;
-            if (chunk_pos < 0){
-                last_boundary = i;
-                node = node->next;
-                if (node != 0){
-                    chunk_pos = node->string.size - 1;
-                }
-            }
-
-            switch (jump_back_code){
-                case 0:
-                {
-                    goto jump_back_0;
-                }break;
-                case 1:
-                {
-                    goto jump_back_1;
-                }break;
-            }
-        }
-
-        for (;node != 0;){
-            c = node->string.str[chunk_pos];
-            n = j - i;
-            needle_c = needle.str[needle.size - 1 - n];
-            if (character_to_upper(c) == character_to_upper(needle_c)){
-                if (c != needle_c){
-                    last_insensitive = i;
-                }
-
-                jump_back_code = 0;
-                goto iterate_backward;
-                jump_back_0:
-
-                if (n + 1 == needle.size){
-                    String_Match_Flag flags = 0;
-                    if (!(last_insensitive < size &&
-                          j >= last_insensitive &&
-                          last_insensitive > j - (i64)needle.size)){
-                        AddFlag(flags, StringMatch_CaseSensitive);
-                    }
-                    if (!(last_boundary < size &&
-                          j >= last_boundary &&
-                          last_boundary > j - (i64)needle.size)){
-                        AddFlag(flags, StringMatch_Straddled);
-                    }
-                    if (node != 0){
-                        u8 next_c = node->string.str[chunk_pos];
-                        if (character_predicate_check_character(*predicate, next_c)){
-                            AddFlag(flags, StringMatch_LeftSideSloppy);
-                        }
-                    }
-                    if (current_r){
-                        AddFlag(flags, StringMatch_RightSideSloppy);
-                    }
-                    string_match_list_push(arena, &list, buffer, string_id, flags,
-                                           base_index + (j - (needle.size - 1)), needle.size);
-                    if (list.count >= maximum_output_count){
-                        break;
-                    }
-                    jump = jump_table.vals[n + 1];
-                    u64 m = needle.size - jump;
-                    u8 needle_m = needle.str[m];
-                    current_r = character_predicate_check_character(*predicate, needle_m);
-                    j -= jump;
-                }
-
-            }
-            else{
-                jump = jump_table.vals[n];
-                if (jump == 0){
-                    current_r = character_predicate_check_character(*predicate, c);
-
-                    jump_back_code = 1;
-                    goto iterate_backward;
-                    jump_back_1:
-
-                    j -= 1;
-                }
-                else{
-                    u64 m = needle.size - jump;
-                    u8 needle_m = needle.str[m];
-                    current_r = character_predicate_check_character(*predicate, needle_m);
-                    j -= jump;
-                }
-            }
-        }
-    }
-
-    string_list_reverse(&chunks);
-
-    return(list);
-}
-
-internal String_Match_List
-find_all_matches(Arena *arena, i32 maximum_output_count,
-                 List_String_Const_u8 chunks, String_Const_u8 needle,
-                 u64_Array jump_table, Character_Predicate *predicate,
-                 Scan_Direction direction,
-                 u64 base_index, Buffer_ID buffer, i32 string_id){
-    String_Match_List list = {};
-    switch (direction){
-        case Scan_Forward:
-        {
-            list = find_all_matches_forward(arena, maximum_output_count,
-                                            chunks, needle, jump_table, predicate,
-                                            base_index, buffer, string_id);
-        }break;
-
-        case Scan_Backward:
-        {
-            list = find_all_matches_backward(arena, maximum_output_count,
-                                             chunks, needle, jump_table, predicate,
-                                             base_index, buffer, string_id);
-        }break;
-    }
-    return(list);
-}
 
 // BOTTOM
 
