@@ -293,6 +293,11 @@ bool pt_prev_cursor(PT_Cursor* it) {
     if (it->index == 0) {
         // walk up (and left)
         PT_Node* curr = it->node->parent;
+        if (curr->parent == NULL) {
+            it->node = NULL;
+            return false;
+        }
+
         while (curr != NULL) {
             int kid = pt_find_node_in_parent(curr);
             if (kid > 0) {

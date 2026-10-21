@@ -57,7 +57,7 @@ pt_scan_skip(PieceTable* pt, PieceTableScan* scan, i64 delta) {
 
             scan->cursor.key -= scan->limit;
         } else if (scan->i >= scan->limit) {
-            delta -= scan->i - scan->limit;
+            delta -= (scan->i + 1) - scan->limit;
             scan->cursor.key += scan->limit;
             pt_next_cursor(&scan->cursor);
 
@@ -210,7 +210,7 @@ find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
 
     uint8_t last_char = needle.str[needle.size - 1];
     uint8_t last_char_up = character_to_upper(last_char);
-
+    
     i64 s = base_index, last_insensitive = -1;
     while (s <= limit) {
         // skip until last char is hit

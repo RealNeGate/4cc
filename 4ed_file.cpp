@@ -153,6 +153,8 @@ save_file_to_name(Thread_Context *tctx, Models *models, Editing_File *file, u8 *
         }
 
         // TODO(NeGate): snapshot the piece table to do async saving
+        // pt_dump(buffer->piece_tables.root, 0, 0);
+        // printf("ADDED: %zu %.*s\n", buffer->added_buffer_used, (int) buffer->added_buffer_used, buffer->added_buffer);
         String_Const_u8 saveable_string = buffer_stringify(scratch, buffer, Ii64(0, buffer_size(buffer)));
 
         File_Attributes new_attributes = system_save_file(scratch, (char*)file_name, saveable_string);
@@ -384,10 +386,15 @@ file_line_y_difference(Thread_Context *tctx, Models *models, Editing_File *file,
     i64 line_a, i64 line_b){
     f32 result = 0.f;
     if (line_a != line_b){
-        Range_i64 line_range = Ii64(line_a, line_b);
-        for (i64 i = line_range.min; i < line_range.max; i += 1){
-            Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, i);
-            result += line.height;
+        Range_i64 line_range = Ii64(line_a, line_b);  
+        if (file->settings.static_line_height) {
+            Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, 1);
+            result += (line_range.max - line_range.min) * line.height;
+        } else {
+            for (i64 i = line_range.min; i < line_range.max; i += 1){
+                Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, i);
+                result += line.height;
+            }
         }
         if (line_a < line_b){
             result *= -1.f;

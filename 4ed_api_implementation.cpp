@@ -709,6 +709,7 @@ buffer_set_layout(Application_Links *app, Buffer_ID buffer_id, Layout_Function *
     b32 result = false;
     if (api_check_buffer(file)){
         result = true;
+        file->settings.static_line_height = true;
         file->settings.layout_func = layout_func;
         file_clear_layout_cache(file);
     }
