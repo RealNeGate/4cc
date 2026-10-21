@@ -1,12 +1,12 @@
 /*
- * chr  - Andrew Chronister &
- * inso - Alex Baines
- *
- * 12.19.2019
- *
- * Updated linux layer for 4coder
- *
- */
+* chr  - Andrew Chronister &
+* inso - Alex Baines
+*
+* 12.19.2019
+*
+* Updated linux layer for 4coder
+*
+*/
 
 // TOP
 
@@ -106,15 +106,15 @@
 
 #ifdef INSO_DEBUG
 #define LINUX_FN_DEBUG(fmt, ...) do { \
-    fprintf(stderr, "%s: " fmt "\n", __func__, ##__VA_ARGS__);\
-} while (0)
+        fprintf(stderr, "%s: " fmt "\n", __func__, ##__VA_ARGS__);\
+    } while (0)
 
 // I want to see a message
 #undef AssertBreak
 #define AssertBreak(m) ({\
-        fprintf(stderr, "\n** ASSERTION FAILURE: %s:%d: %s\n\n", __FILE__, __LINE__, #m);\
-        *((volatile u64*)0) = 0xba771e70ad5;\
-    })
+                            fprintf(stderr, "\n** ASSERTION FAILURE: %s:%d: %s\n\n", __FILE__, __LINE__, #m);\
+                            *((volatile u64*)0) = 0xba771e70ad5;\
+                        })
 #else
 #define LINUX_FN_DEBUG(...)
 #endif
@@ -123,7 +123,7 @@
 
 global b32 log_os_enabled = false;
 #define log_os(...) \
-Stmnt( if (log_os_enabled){ fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
+    Stmnt( if (log_os_enabled){ fprintf(stdout, __VA_ARGS__); fflush(stdout); } )
 
 ////////////////////////////
 
@@ -304,9 +304,9 @@ linux_alloc_object(Linux_Object_Kind kind){
         i32 count = 512;
 
         Linux_Object* objects = (Linux_Object*)system_memory_allocate(
-            sizeof(Linux_Object) * count,
-            file_name_line_number_lit_u8
-        );
+                                                                      sizeof(Linux_Object) * count,
+                                                                      file_name_line_number_lit_u8
+                                                                      );
 
         objects[0].node.prev = &linuxvars.free_linux_objects;
         linuxvars.free_linux_objects.next = &objects[0].node;
@@ -424,8 +424,8 @@ linux_set_wm_state(Atom one, Atom two, enum wm_state_mode mode){
     e.xclient.data.l[3] = 1L;
 
     XSendEvent(linuxvars.dpy,
-        RootWindow(linuxvars.dpy, 0),
-        0, SubstructureNotifyMask | SubstructureRedirectMask, &e);
+               RootWindow(linuxvars.dpy, 0),
+               0, SubstructureNotifyMask | SubstructureRedirectMask, &e);
 }
 
 internal void
@@ -649,7 +649,7 @@ glx_get_config(GLXFBConfig* fb_config, XVisualInfo* vi) {
         GLX_STENCIL_SIZE , 8,
         GLX_DOUBLEBUFFER , True,
         None
-    };
+        };
 
     int conf_count = 0;
     GLXFBConfig* conf_list = glXChooseFBConfig(linuxvars.dpy, DefaultScreen(linuxvars.dpy), attrs, &conf_count);
@@ -713,7 +713,7 @@ glx_create_context(GLXFBConfig fb_config){
             GLX_CONTEXT_FLAGS_ARB        , GLX_CONTEXT_DEBUG_BIT_ARB,
             #endif
             None
-        };
+            };
 
         //LOG("Creating GL 2.1 context... ");
         ctx = glXCreateContextAttribsARB(linuxvars.dpy, fb_config, 0, True, context_attribs);
@@ -878,7 +878,7 @@ linux_x11_init(int argc, char** argv, Plat_Settings* settings) {
     Atom wm_protos[] = {
         linuxvars.atom_WM_DELETE_WINDOW,
         linuxvars.atom__NET_WM_PING
-    };
+        };
 
     XSetWMProtocols(linuxvars.dpy, linuxvars.win, wm_protos, 2);
 
@@ -938,10 +938,10 @@ linux_x11_init(int argc, char** argv, Plat_Settings* settings) {
     XFree(styles);
 
     linuxvars.xic = XCreateIC(linuxvars.xim,
-        XNInputStyle, style_want,
-        XNClientWindow, linuxvars.win,
-        XNFocusWindow, linuxvars.win,
-        NULL);
+                              XNInputStyle, style_want,
+                              XNClientWindow, linuxvars.win,
+                              XNFocusWindow, linuxvars.win,
+                              NULL);
 
     if(!linuxvars.xic) {
         system_error_box("Error creating X Input context.");
@@ -989,7 +989,7 @@ linux_x11_init(int argc, char** argv, Plat_Settings* settings) {
         XCreateFontCursor(linuxvars.dpy, XC_xterm),
         XCreateFontCursor(linuxvars.dpy, XC_sb_h_double_arrow),
         XCreateFontCursor(linuxvars.dpy, XC_sb_v_double_arrow)
-    };
+        };
     block_copy(linuxvars.xcursors, cursors, sizeof(cursors));
 
     // sneaky invisible cursor
@@ -1254,14 +1254,14 @@ linux_clipboard_send(XSelectionRequestEvent* req) {
     if (req->target == linuxvars.atom_TARGETS){
 
         XChangeProperty(
-            req->display,
-            req->requestor,
-            req->property,
-            XA_ATOM,
-            32,
-            PropModeReplace,
-            (u8*)formats,
-            ArrayCount(formats));
+                        req->display,
+                        req->requestor,
+                        req->property,
+                        XA_ATOM,
+                        32,
+                        PropModeReplace,
+                        (u8*)formats,
+                        ArrayCount(formats));
 
         rsp.property = req->property;
 
@@ -1276,15 +1276,15 @@ linux_clipboard_send(XSelectionRequestEvent* req) {
 
         if (i != ArrayCount(formats)){
             XChangeProperty(
-                req->display,
-                req->requestor,
-                req->property,
-                req->target,
-                8,
-                PropModeReplace,
-                linuxvars.clipboard_contents.str,
-                linuxvars.clipboard_contents.size
-            );
+                            req->display,
+                            req->requestor,
+                            req->property,
+                            req->target,
+                            8,
+                            PropModeReplace,
+                            linuxvars.clipboard_contents.str,
+                            linuxvars.clipboard_contents.size
+                            );
 
             rsp.property = req->property;
         }
@@ -1303,12 +1303,12 @@ linux_clipboard_recv(Arena *arena){
     u8 *data;
 
     int result = XGetWindowProperty(linuxvars.dpy,
-        linuxvars.win,
-        linuxvars.atom_CLIPBOARD,
-        0L, 0x20000000L, False,
-        linuxvars.atom_UTF8_STRING,
-        &type, &fmt, &nitems,
-        &bytes_left, &data);
+                                    linuxvars.win,
+                                    linuxvars.atom_CLIPBOARD,
+                                    0L, 0x20000000L, False,
+                                    linuxvars.atom_UTF8_STRING,
+                                    &type, &fmt, &nitems,
+                                    &bytes_left, &data);
 
     String_Const_u8 clip = {};
     if(result == Success && fmt == 8){
@@ -1324,8 +1324,8 @@ internal void
 linux_clipboard_recv(XSelectionEvent* ev) {
 
     if(ev->selection != linuxvars.atom_CLIPBOARD ||
-        ev->target != linuxvars.atom_UTF8_STRING ||
-        ev->property == None) {
+       ev->target != linuxvars.atom_UTF8_STRING ||
+       ev->property == None) {
         return;
     }
 
@@ -1568,11 +1568,11 @@ linux_handle_x11_events() {
                         // NOTE(inso): improves selection dragging (especially in notepad-like mode).
                         // we will still get mouse events when the pointer leaves the window if it's dragging.
                         XGrabPointer(
-                            linuxvars.dpy,
-                            linuxvars.win,
-                            True, PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
-                            GrabModeAsync, GrabModeAsync,
-                            None, None, CurrentTime);
+                                     linuxvars.dpy,
+                                     linuxvars.win,
+                                     True, PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+                                     GrabModeAsync, GrabModeAsync,
+                                     None, None, CurrentTime);
 
                     } break;
 
@@ -1648,10 +1648,10 @@ linux_handle_x11_events() {
                 else if(atom == linuxvars.atom__NET_WM_PING) {
                     event.xclient.window = DefaultRootWindow(linuxvars.dpy);
                     XSendEvent(linuxvars.dpy,
-                        event.xclient.window,
-                        False,
-                        SubstructureRedirectMask | SubstructureNotifyMask,
-                        &event);
+                               event.xclient.window,
+                               False,
+                               SubstructureRedirectMask | SubstructureNotifyMask,
+                               &event);
                 }
             } break;
 
@@ -1681,11 +1681,11 @@ linux_handle_x11_events() {
                     XFixesSelectionNotifyEvent* sne = (XFixesSelectionNotifyEvent*)&event;
                     if (sne->subtype == XFixesSelectionNotify && sne->owner != linuxvars.win){
                         XConvertSelection(linuxvars.dpy,
-                            linuxvars.atom_CLIPBOARD,
-                            linuxvars.atom_UTF8_STRING,
-                            linuxvars.atom_CLIPBOARD,
-                            linuxvars.win,
-                            CurrentTime);
+                                          linuxvars.atom_CLIPBOARD,
+                                          linuxvars.atom_UTF8_STRING,
+                                          linuxvars.atom_CLIPBOARD,
+                                          linuxvars.win,
+                                          CurrentTime);
                     }
                 }
 
@@ -1746,6 +1746,24 @@ linux_epoll_process(struct epoll_event* events, int num_events) {
     }
 
     return do_step;
+}
+
+// Helper function to calculate precise refresh rate from mode timing constants
+static double calculate_refresh_rate(const XRRModeInfo *mode) {
+    if (mode->hTotal && mode->vTotal) {
+        double vTotal = mode->vTotal;
+
+        if (mode->modeFlags & RR_DoubleScan) {
+            vTotal *= 2;
+        }
+        if (mode->modeFlags & RR_Interlace) {
+            vTotal /= 2;
+        }
+
+        // dotClock is in Hz, hTotal * vTotal is total pixels per frame period
+        return (double)mode->dotClock / (mode->hTotal * vTotal);
+    }
+    return 0.0;
 }
 
 int
@@ -1844,15 +1862,15 @@ main(int argc, char **argv){
         base_ptr = app.read_command_line(&linuxvars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
         /* TODO(inso): what is this doing?
         {
-            i32 end = *file_count;
-            i32 i = 0, j = 0;
-            for (; i < end; ++i){
-                if (system_file_can_be_made(scratch, (u8*)files[i])){
-                    files[j] = files[i];
-                    ++j;
-                }
-            }
-            *file_count = j;
+        i32 end = *file_count;
+        i32 i = 0, j = 0;
+        for (; i < end; ++i){
+        if (system_file_can_be_made(scratch, (u8*)files[i])){
+        files[j] = files[i];
+        ++j;
+        }
+        }
+        *file_count = j;
         }*/
     }
 
@@ -1931,13 +1949,35 @@ main(int argc, char **argv){
     }
 
     // Get the refresh rate of the fastest monitor
-    u64 frame_rate;
+    u64 frame_rate = 60;
     {
-        Window root = RootWindow(linuxvars.dpy, 0);
-        XRRScreenConfiguration* conf = XRRGetScreenInfo(linuxvars.dpy, root);
-        frame_rate = XRRConfigCurrentRate(conf);
+        // Window root = XDefaultRootWindow(linuxvars.dpy);
+        Window root = RootWindow(linuxvars.dpy, DefaultScreen(linuxvars.dpy));
+        XRRScreenResources* resources = XRRGetScreenResources(linuxvars.dpy, root);
+        if (resources) {
+            RRMode active_mode_id = 0;
+            for (int i = 0; i < resources->ncrtc; ++i) {
+                XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(linuxvars.dpy, resources, resources->crtcs[i]);
+                int mode = crtc_info->mode;
+                XRRFreeCrtcInfo(crtc_info);
+                // If None, then is not displaying the screen contents
+                if (mode != None) {
+                    active_mode_id = mode;
+                    break;
+                }
+            }
 
-        printf("Rate: %lu\n", frame_rate);
+            for (int i = 0; i < resources->nmode; ++i) {
+                XRRModeInfo mode_info = resources->modes[i];
+                if (mode_info.id == active_mode_id) {
+                    frame_rate = ceil(calculate_refresh_rate(&mode_info));
+                }
+            }
+
+            XRRFreeScreenResources(resources);
+        }
+
+        printf("Rate: %ld\n", frame_rate);
     }
     linuxvars.frame_useconds = (1000000 / frame_rate);
 
