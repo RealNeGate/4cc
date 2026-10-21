@@ -327,6 +327,7 @@ file_line_shift_y(Thread_Context *tctx, Models *models, Editing_File *file,
     Line_Shift_Vertical result = {};
 
     f32 line_y = 0.f;
+    f32 line_height = face->metrics.line_height;
 
     if (y_delta < 0.f){
         // NOTE(allen): Iterating upward
@@ -343,9 +344,7 @@ file_line_shift_y(Thread_Context *tctx, Models *models, Editing_File *file,
                 line_number = 1;
                 break;
             }
-            Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func,
-                width, face, line_number);
-            line_y -= line.height;
+            line_y -= line_height;
         }
         if (!has_result){
             result.line = line_number;
@@ -357,9 +356,7 @@ file_line_shift_y(Thread_Context *tctx, Models *models, Editing_File *file,
         b32 has_result = false;
         i64 line_count = buffer_line_count(&file->state.buffer);
         for (;;line_number += 1){
-            Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func,
-                width, face, line_number);
-            f32 next_y = line_y + line.height;
+            f32 next_y = line_y + line_height;
             if (y_delta < next_y){
                 has_result = true;
                 result.line = line_number;
@@ -384,23 +381,7 @@ internal f32
 file_line_y_difference(Thread_Context *tctx, Models *models, Editing_File *file,
     Layout_Function *layout_func, f32 width, Face *face,
     i64 line_a, i64 line_b){
-    f32 result = 0.f;
-    if (line_a != line_b){
-        Range_i64 line_range = Ii64(line_a, line_b);  
-        if (file->settings.static_line_height) {
-            Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, 1);
-            result += (line_range.max - line_range.min) * line.height;
-        } else {
-            for (i64 i = line_range.min; i < line_range.max; i += 1){
-                Layout_Item_List line = file_get_line_layout(tctx, models, file, layout_func, width, face, i);
-                result += line.height;
-            }
-        }
-        if (line_a < line_b){
-            result *= -1.f;
-        }
-    }
-    return(result);
+    return (line_a - line_b) * face->metrics.line_height;
 }
 
 internal i64

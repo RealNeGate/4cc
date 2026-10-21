@@ -33,7 +33,6 @@ struct Editing_File_Settings{
     b8 read_only;
     b8 unkillable;
     b8 never_kill;
-    b8 static_line_height;
 };
 
 struct Line_Layout_Key{
