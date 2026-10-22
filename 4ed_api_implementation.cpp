@@ -309,9 +309,9 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
             }
             else{
                 i64 adjusted_pos = start_pos - 1 + needle.size;
-                start_pos = clamp_bot(0, adjusted_pos);
+                adjusted_pos = clamp_bot(0, adjusted_pos);
 
-                String_Match_List list = find_all_matches_backward2(scratch, &dummy, 1, pt, needle, start_pos, buffer, 0);
+                String_Match_List list = find_all_matches_backward2(scratch, &dummy, 1, pt, needle, adjusted_pos, buffer, 0);
                 if (list.count == 1){
                     result = *list.first;
                 }

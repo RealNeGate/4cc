@@ -206,7 +206,7 @@ find_all_matches_forward2(Arena *arena,
     // compute delta table
     int8_t bad_char[256];
     for (size_t i = 0; i < 256; i++) {
-        bad_char[i] = needle.size - 1;
+        bad_char[i] = needle.size;
     }
 
     for (size_t i = 0; i < needle.size - 1; i++) {
@@ -214,16 +214,14 @@ find_all_matches_forward2(Arena *arena,
         bad_char[character_to_upper(ch)] = needle.size - 1 - i;
     }
 
-    PieceTableScan curr = pt_scan_seek(pt, base_index + needle.size - 1);
+    PieceTableScan curr = pt_scan_seek(pt, base_index);
     i64 limit = size - needle.size;
 
-    uint8_t last_char = needle.str[needle.size - 1];
-    uint8_t last_char_up = character_to_upper(last_char);
     bool current_l = false;
-
     i64 match = 0;
     i64 s = base_index, last_insensitive = -1;
     while (s <= limit) {
+        assert(pt_scan_pos(&curr) == s);
         u8 ch = curr.str[curr.i];
         u8 match_ch = needle.str[match];
 
@@ -242,13 +240,22 @@ find_all_matches_forward2(Arena *arena,
                     AddFlag(flags, StringMatch_CaseSensitive);
                 }
 
-                string_match_list_push(arena, &list, buffer, string_id, flags, s, needle.size);
+                if (current_l){
+                    AddFlag(flags, StringMatch_LeftSideSloppy);
+                }
+
+                delta = bad_char[character_to_upper(ch)] - 1;
+                pt_scan_skip(pt, &curr, 1);
+                ch = character_to_upper(curr.str[curr.i]);
+                if (character_predicate_check_character(*predicate, ch)) {
+                    AddFlag(flags, StringMatch_RightSideSloppy);
+                }
+                match = 0;
+
+                string_match_list_push(arena, &list, buffer, string_id, flags, s - (needle.size - 1), needle.size);
                 if (list.count >= maximum_output_count){
                     break;
                 }
-
-                match = 0;
-                delta = bad_char[character_to_upper(ch)];
             } else {
                 delta = 1;
             }
@@ -256,6 +263,11 @@ find_all_matches_forward2(Arena *arena,
             // Bad skip checks s + needle.size - 1
             ch = pt_scan_peek(pt, curr, needle.size - 1);
             delta = bad_char[character_to_upper(ch)];
+            match = 0;
+        }
+
+        if (s + delta > limit) {
+            break;
         }
 
         assert(delta >= 1);
@@ -282,68 +294,83 @@ find_all_matches_backward2(Arena *arena,
     if (base_index < needle.size) {
         return(list);
     }
+    base_index -= 1;
 
-    // compute reverse delta table
+    // compute delta table
     int8_t bad_char[256];
     for (size_t i = 0; i < 256; i++) {
-        bad_char[i] = -1;
+        bad_char[i] = needle.size;
     }
 
-    for (size_t i = needle.size; i--;) {
+    for (size_t i = needle.size; (i--) > 1;) {
         char ch = needle.str[i];
-        bad_char[character_to_upper(ch)] = needle.size - (i + 1);
+        bad_char[character_to_upper(ch)] = i;
     }
 
-    uint8_t first_char = needle.str[0];
-    uint8_t first_char_up = character_to_upper(first_char);
+    PieceTableScan curr = pt_scan_seek(pt, base_index);
 
-    PieceTableScan curr = pt_scan_seek(pt, base_index - needle.size);
-    i64 s = base_index - needle.size, last_insensitive = -1;
-    while (s >= 0) {
-        // skip until first char is hit
-        while (s--, curr.i--) {
-            if (character_to_upper(curr.str[curr.i]) == first_char_up) {
-                break;
-            }
-        }
-
-        if (curr.i < 0 && !pt_update_scan(pt, &curr, true)) {
-            break;
-        }
+    bool current_r = false;
+    i64 match = 0;
+    i64 s = base_index, last_insensitive = -1;
+    while (s >= needle.size) {
         assert(pt_scan_pos(&curr) == s);
+        u8 ch = curr.str[curr.i];
+        u8 match_ch = needle.str[needle.size - 1 - match];
 
-        u8 ch;
         i64 delta;
-        i64 j = pt_scan_fwd_match(pt, curr.cursor, s, needle, &ch, &last_insensitive);
-        if (j < 0) {
-            // if the whole thing matches, profit
-            String_Match_Flag flags = 0;
-            if (!(last_insensitive >= 0 &&
-                  s <= (u64)last_insensitive &&
-                  (u64)last_insensitive < s + needle.size)){
-                AddFlag(flags, StringMatch_CaseSensitive);
+        if (character_to_upper(ch) == character_to_upper(match_ch)) {
+            if (ch != match_ch) {
+                last_insensitive = pt_scan_pos(&curr);
             }
 
-            string_match_list_push(arena, &list, buffer, string_id, flags, s, needle.size);
-            if (list.count >= maximum_output_count){
-                break;
-            }
+            match += 1;
+            if (match == needle.size) {
+                String_Match_Flag flags = 0;
+                if (!(last_insensitive >= 0 &&
+                      s <= (u64)last_insensitive &&
+                      (u64)last_insensitive < s + needle.size)){
+                    AddFlag(flags, StringMatch_CaseSensitive);
+                }
 
-            delta = 1;
+                if (current_r){
+                    AddFlag(flags, StringMatch_RightSideSloppy);
+                }
+
+                delta = bad_char[character_to_upper(ch)] - 1;
+                pt_scan_skip(pt, &curr, -1);
+                ch = character_to_upper(curr.str[curr.i]);
+                if (character_predicate_check_character(*predicate, ch)) {
+                    AddFlag(flags, StringMatch_LeftSideSloppy);
+                }
+                match = 0;
+
+                string_match_list_push(arena, &list, buffer, string_id, flags, s, needle.size);
+                if (list.count >= maximum_output_count){
+                    break;
+                }
+            } else {
+                delta = 1;
+            }
         } else {
-            ch = character_to_upper(ch);
-
-            // skip ahead if it doesn't match, align with the
-            // last occurence in the pattern
-            delta = j - bad_char[ch];
-            delta = Max(delta, 1);
+            // Bad skip checks s - needle.size - 1
+            ch = pt_scan_peek(pt, curr, -(needle.size - 1));
+            delta = bad_char[character_to_upper(ch)];
+            match = 0;
         }
 
-        if (s < delta) {
+        if (s - delta < needle.size) {
             break;
         }
 
-        pt_scan_skip(pt, &curr, -delta);
+        assert(delta >= 1);
+        if (delta > 1) {
+            pt_scan_skip(pt, &curr, -delta + 1);
+        }
+        if (match == 0) {
+            ch = curr.str[curr.i];
+            current_r = character_predicate_check_character(*predicate, ch);
+        }
+        pt_scan_skip(pt, &curr, -1);
         s -= delta;
     }
     return (list);
