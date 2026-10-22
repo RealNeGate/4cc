@@ -57,7 +57,7 @@ pt_scan_skip(PieceTable* pt, PieceTableScan* scan, i64 delta) {
 
             scan->cursor.key -= scan->limit;
         } else if (scan->i >= scan->limit) {
-            delta -= (scan->i + 1) - scan->limit;
+            delta = scan->i - scan->limit;
             scan->cursor.key += scan->limit;
             pt_next_cursor(&scan->cursor);
 

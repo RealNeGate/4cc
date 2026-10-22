@@ -665,6 +665,10 @@ bool pt_alloc(PieceTable* pt, const char* path) {
 
     size_t size  = file_stats.st_size;
     char* buffer = malloc(size);
+    if (buffer == NULL) {
+        printf("Out of memory!!!\n");
+        return false;
+    }
 
     fseek(file, 0, SEEK_SET);
     fread(buffer, 1, size, file);
