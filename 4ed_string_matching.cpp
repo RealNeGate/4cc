@@ -184,8 +184,17 @@ pt_scan_pos(PieceTableScan* scan) {
     return scan->cursor.key + scan->i;
 }
 
+internal u8
+pt_scan_peek(PieceTable* pt, PieceTableScan scan, i64 offset) {
+    pt_scan_skip(pt, &scan, offset);
+    return scan.str[scan.i];
+}
+
+#define character_predicate_check_character(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
+
 internal String_Match_List
-find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
+find_all_matches_forward2(Arena *arena,
+                          Character_Predicate *predicate, i32 maximum_output_count,
                           PieceTable *pt, String_Const_u8 needle,
                           u64 base_index, Buffer_ID buffer, i32 string_id){
     String_Match_List list = {};
@@ -197,12 +206,12 @@ find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
     // compute delta table
     int8_t bad_char[256];
     for (size_t i = 0; i < 256; i++) {
-        bad_char[i] = -1;
+        bad_char[i] = needle.size - 1;
     }
 
-    for (size_t i = 0; i < needle.size; i++) {
+    for (size_t i = 0; i < needle.size - 1; i++) {
         char ch = needle.str[i];
-        bad_char[character_to_upper(ch)] = i;
+        bad_char[character_to_upper(ch)] = needle.size - 1 - i;
     }
 
     PieceTableScan curr = pt_scan_seek(pt, base_index + needle.size - 1);
@@ -210,66 +219,62 @@ find_all_matches_forward2(Arena *arena, i32 maximum_output_count,
 
     uint8_t last_char = needle.str[needle.size - 1];
     uint8_t last_char_up = character_to_upper(last_char);
+    bool current_l = false;
 
+    i64 match = 0;
     i64 s = base_index, last_insensitive = -1;
     while (s <= limit) {
-        // skip until last char is hit
-        for (; curr.i < curr.limit; curr.i++, s++) {
-            if (character_to_upper(curr.str[curr.i]) == last_char_up) {
-                break;
-            }
-        }
+        u8 ch = curr.str[curr.i];
+        u8 match_ch = needle.str[match];
 
-        if (curr.i == curr.limit && !pt_update_scan(pt, &curr, false)) {
-            break;
-        }
-
-        // backwards search to find our biggest suffix
-        i64 top = s + needle.size;
-        assert(pt_scan_pos(&curr) == top - 1);
-
-        u8 ch;
         i64 delta;
-        i64 j = pt_scan_rev_match(pt, curr.cursor, top, needle, &ch, &last_insensitive);
-        if (j < 0) {
-            // if the whole thing matches, profit
-            String_Match_Flag flags = 0;
-            if (!(last_insensitive >= 0 &&
-                  s <= (u64)last_insensitive &&
-                  (u64)last_insensitive < s + needle.size)){
-                AddFlag(flags, StringMatch_CaseSensitive);
+        if (character_to_upper(ch) == character_to_upper(match_ch)) {
+            if (ch != match_ch) {
+                last_insensitive = pt_scan_pos(&curr);
             }
 
-            string_match_list_push(arena, &list, buffer, string_id, flags, s, needle.size);
-            if (list.count >= maximum_output_count){
-                break;
-            }
+            match += 1;
+            if (match == needle.size) {
+                String_Match_Flag flags = 0;
+                if (!(last_insensitive >= 0 &&
+                      s <= (u64)last_insensitive &&
+                      (u64)last_insensitive < s + needle.size)){
+                    AddFlag(flags, StringMatch_CaseSensitive);
+                }
 
-            // cursor is at s+needle-1, we want the character right after
-            // ch = character_to_upper(pt_scan_peek_ahead(pt, curr));
-            // delta = (s + needle.size < size) ? needle.size - bad_char[ch] : 1;
-            delta = 1;
+                string_match_list_push(arena, &list, buffer, string_id, flags, s, needle.size);
+                if (list.count >= maximum_output_count){
+                    break;
+                }
+
+                match = 0;
+                delta = bad_char[character_to_upper(ch)];
+            } else {
+                delta = 1;
+            }
         } else {
-            ch = character_to_upper(ch);
-
-            // skip ahead if it doesn't match, align with the
-            // last occurence in the pattern
-            delta = j - bad_char[ch];
-            delta = Max(delta, 1);
+            // Bad skip checks s + needle.size - 1
+            ch = pt_scan_peek(pt, curr, needle.size - 1);
+            delta = bad_char[character_to_upper(ch)];
         }
 
-        if (s + delta > limit) {
-            break;
+        assert(delta >= 1);
+        if (delta > 1) {
+            pt_scan_skip(pt, &curr, delta - 1);
         }
-
-        pt_scan_skip(pt, &curr, delta);
+        if (match == 0) {
+            ch = curr.str[curr.i];
+            current_l = character_predicate_check_character(*predicate, ch);
+        }
+        pt_scan_skip(pt, &curr, 1);
         s += delta;
     }
     return(list);
 }
 
 internal String_Match_List
-find_all_matches_backward2(Arena *arena, i32 maximum_output_count,
+find_all_matches_backward2(Arena *arena,
+                           Character_Predicate *predicate, i32 maximum_output_count,
                            PieceTable *pt, String_Const_u8 needle,
                            u64 base_index, Buffer_ID buffer, i32 string_id){
     String_Match_List list = {};
@@ -379,8 +384,6 @@ string_compute_prefix_table(Arena *arena, String_Const_u8 string, Scan_Direction
 
     return(array);
 }
-
-#define character_predicate_check_character(p, c) (((p).b[(c)/8] & (1 << ((c)%8))) != 0)
 
 // BOTTOM
 

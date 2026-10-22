@@ -300,8 +300,9 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
             Scratch_Block scratch(app);
             PieceTable *pt = &file->state.buffer;
             i64 size = pt_total_size(pt);
+            Character_Predicate dummy = {};
             if (direction == Scan_Forward){
-                String_Match_List list = find_all_matches_forward2(scratch, 1, pt, needle, start_pos + 1, buffer, 0);
+                String_Match_List list = find_all_matches_forward2(scratch, &dummy, 1, pt, needle, start_pos + 1, buffer, 0);
                 if (list.count == 1){
                     result = *list.first;
                 }
@@ -310,7 +311,7 @@ buffer_seek_string(Application_Links *app, Buffer_ID buffer, String_Const_u8 nee
                 i64 adjusted_pos = start_pos - 1 + needle.size;
                 start_pos = clamp_bot(0, adjusted_pos);
 
-                String_Match_List list = find_all_matches_backward2(scratch, 1, pt, needle, start_pos, buffer, 0);
+                String_Match_List list = find_all_matches_backward2(scratch, &dummy, 1, pt, needle, start_pos, buffer, 0);
                 if (list.count == 1){
                     result = *list.first;
                 }
@@ -332,6 +333,8 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
         // skip initial char
         if (direction > 0) {
             start_pos++;
+        } else if (direction < 0) {
+            start_pos--;
         }
 
         if (start_pos < 0) {
@@ -362,7 +365,7 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
         } else if (direction == -1) {
             PT_Val* piece = pt_get_val(cur);
             i64 pos  = cur.key + piece->length;
-            i64 clip = pos - (start_pos + 1);
+            i64 clip = (start_pos - cur.key) + 1;
 
             // printf("WOAH! %ld %ld %ld\n", start_pos, pos, clip);
             while (cur.node != NULL) {
@@ -370,14 +373,14 @@ buffer_seek_character_class(Application_Links *app, Buffer_ID buffer, Character_
                 const char* src = (piece->added ? pt->added_buffer : pt->og_buffer) + piece->offset;
 
                 pos -= piece->length;
-                for (size_t i = piece->length - clip; i--;) {
+                for (size_t i = clip; i--;) {
                     if (character_predicate_check_character(*predicate, src[i])){
                         result.buffer = buffer;
                         result.range  = Ii64(pos + i, pos + i + 1);
                         goto done;
                     }
                 }
-                pt_prev_cursor(&cur), clip = 0;
+                pt_prev_cursor(&cur), clip = pt_get_val(cur)->length;
             }
         }
     }
@@ -3196,11 +3199,16 @@ buffer_find_all_matches(Application_Links *app, Arena *arena, Buffer_ID buffer,
     if (api_check_buffer(file)){
         if (needle.size > 0){
             Scratch_Block scratch(app, arena);
+            Character_Predicate dummy = {};
+            if (predicate == 0){
+                predicate = &dummy;
+            }
+
             PieceTable *pt = &file->state.buffer;
             if (direction == Scan_Forward){
-                list = find_all_matches_forward2(arena, max_i32, pt, needle, range.min, buffer, string_id);
+                list = find_all_matches_forward2(arena, predicate, max_i32, pt, needle, range.min, buffer, string_id);
             } else {
-                list = find_all_matches_backward2(arena, max_i32, pt, needle, range.min, buffer, string_id);
+                list = find_all_matches_backward2(arena, predicate, max_i32, pt, needle, range.min, buffer, string_id);
             }
         }
 
